@@ -1,15 +1,7 @@
-# The frozen contract is setup-like and immutable: TRACK its cheap metadata
-# (selection.json, contract.json, reference.py) so prep is reproducible and
-# auditable. IGNORE only the large, regenerable artifacts below.
-targets/**/inputs.pt
-targets/**/golden.pt
-targets/**/profile.json
-targets/**/inductor/
-targets/**/kernel/build/
-targets/**/loop_history.json
-targets/**/result.json
-targets/**/weights.pt
-targets/**/assets/
+# targets/ is fully derived output: `make prep` regenerates the frozen
+# contract, the loop regenerates the kernel. The repo tracks the generic
+# engine only — per-target results are local/regenerable, never history.
+targets/
 __pycache__/
 *.pyc
 # Secrets — NEVER tracked. HF_TOKEN etc. go here (synced to host, env-file'd
