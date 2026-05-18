@@ -1,0 +1,26 @@
+{
+  "model": "facebook/sam-vit-base",
+  "block_class": "SamVisionSdpaAttention",
+  "module_path": "vision_encoder.layers.0.attn",
+  "arch": {
+    "device": "NVIDIA GB10",
+    "compute_capability": "12.1",
+    "torch": "2.10.0a0+b558c986e8.nv25.11",
+    "host_arch": "aarch64"
+  },
+  "dtype": "torch.float32",
+  "input_shapes": [
+    [
+      25,
+      14,
+      14,
+      768
+    ]
+  ],
+  "eager_ms": 3.27714,
+  "compile_ms": 2.31773,
+  "compile_speedup_vs_eager": 1.4139,
+  "baseline_mode": "max-autotune",
+  "verdict": "moderate_headroom (compile helped some; beatable)",
+  "note": "Eager/compile baseline for the loop to report against. The PERF gate on the authoritative machine is the real pass/fail; a true roofline check (device peak BW/FLOPs) is TODO."
+}

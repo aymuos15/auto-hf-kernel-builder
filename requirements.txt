@@ -1,0 +1,5 @@
+# Controller-side deps only (parsing config, orchestration).
+# torch / triton / transformers / kernels / kernel-builder come from the
+# pinned NGC container on Spark — NEVER pip-install torch for sm_121 aarch64.
+# See skills/env-setup/SKILL.md.
+pyyaml>=6.0

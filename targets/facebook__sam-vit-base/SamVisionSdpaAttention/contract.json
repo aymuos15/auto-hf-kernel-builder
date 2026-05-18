@@ -1,0 +1,30 @@
+{
+  "model": "facebook/sam-vit-base",
+  "block_class": "SamVisionSdpaAttention",
+  "module_path": "vision_encoder.layers.0.attn",
+  "input_order": [
+    "hidden_states"
+  ],
+  "input_sig": [
+    [
+      [
+        25,
+        14,
+        14,
+        768
+      ],
+      "torch.float32"
+    ]
+  ],
+  "nontensor_inputs": [],
+  "output_sig": [
+    [
+      25,
+      14,
+      14,
+      768
+    ],
+    "torch.float32"
+  ],
+  "note": "inputs.pt = tuple of tensors in EXACTLY input_order (positional args then sorted tensor kwargs). The kernel is called kernel(*inputs) in that order and must reproduce golden.pt within config rtol/atol. Non-tensor inputs are fixed config, recorded here."
+}
