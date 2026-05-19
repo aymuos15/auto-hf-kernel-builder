@@ -2,9 +2,23 @@
 
 How a kernel is benched without trusting it. Boundary = the reference is **absent** where the kernel runs (frozen tensors + an import guard), not detected after the fact.
 
-```
-setup ─→ ref.pt
-solve ─→ queue ─→ worker ─→ sandbox ─→ [ guard + bench(ref.pt) ] ─→ verdict ─→ solve
+```mermaid
+flowchart TD
+    setup -- freeze --> ref["ref.pt<br/>inputs · ref_a/b · ref_deps"]
+
+    subgraph attempt["solve · per attempt"]
+        direction TB
+        oc["opencode edits kernel.py"] -- enqueue --> q[("queue")]
+        q -- claim --> w["worker"] --> sb["sandbox"] -- spawns --> gc
+        subgraph gc["guarded child"]
+            direction TB
+            g["guard: ref_deps unimportable"]
+            b["bench: kernel vs ref.pt"]
+        end
+        gc -- verdict --> oc
+    end
+
+    ref -. read-only .-> b
 ```
 
 `guard` makes `ref_deps` unimportable; `bench` compares against `ref.pt` and never builds the reference. Per attempt = one queue job.
