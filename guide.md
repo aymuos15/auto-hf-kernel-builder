@@ -74,4 +74,27 @@ Config-driven — input is `configs/<name>/config.json`. `src/profiling/inductor
 
 Example — L3 #4 `4_LeNet5`: 1 graph, 7 fused Triton kernels (e.g. `triton_poi_fused_convolution_max_pool2d_with_indices_relu_*`, `triton_poi_fused_addmm_relu_*`), 512 lines captured.
 
-`configs/<name>/config.json` is the only tracked input; `res.json` / `prof.json` / `inductor.py` / `run.log` in the folder are derived (gitignored).
+# Phase 5: Kernel
+
+`configs/<name>/kernel.py` is the single file the AI (later) / human owns: a callable `kernel(*inputs)`. It is a **precondition** — `src/kernels/scaffold.py` only resolves it (errors if absent); it does not generate one.
+
+# Phase 6: Build
+
+Hard requirement (maintainer): a generated kernel must compile and build with HF **kernel-builder**.
+
+Config-driven — input is `configs/<name>/config.json`. `src/kernels/builder.py`:
+
+- `assemble.sh` turns `kernel.py` into a kernel-builder universal-Triton project: `configs/<name>/kernel/{build.toml, flake.nix, torch-ext/<pkg>/__init__.py}`. `flake.nix` (template `src/kernels/flake.nix`) pins kernel-builder to `b4accba…` (proven, cache-backed, no schema migration).
+- `build.sh` runs `nix build --accept-flake-config path:<proj>#bundle -o result` (the `path:` flakeref so the gitignored project is visible to Nix).
+- writes `configs/<name>/build.json` (`passed`, `error_class`, `pkg`, `kernel_sha`).
+
+Speed: pinned rev + HF Cachix substituter (download, don't compile) + reused `flake.lock` + warm `/nix/store`. Plus a **content-hash skip** — if `kernel.py` is unchanged, the prior build passed, and `result` exists, the build is skipped entirely (no `nix` invocation). First build ≈ minutes (cold closure); thereafter seconds, unchanged ≈ zero.
+
+| `build.json` field | meaning |
+|---|---|
+| `passed` | `nix build` succeeded |
+| `error_class` | `nix_build_failed` / `no_nix` / `null` |
+| `pkg` | kernel-builder package name |
+| `kernel_sha` | sha256 of `kernel.py` (drives the skip) |
+
+`configs/<name>/config.json` is the only tracked input; `kernel.py`, `res.json`, `prof.json`, `inductor.py`, `run.log`, `build.json`, and `kernel/` are derived (gitignored).
