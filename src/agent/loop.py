@@ -94,19 +94,25 @@ def solve(config_path: str) -> None:
     for attempt in range(1, max_retries + 1):
         print(f"\n=== solve {name}: attempt {attempt}/{max_retries} ===")
         prompt = _prompt(name, cfg_path.with_name("bench.json"))
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             ["opencode", "run", "--model", model, prompt],
             cwd=REPO,
-            check=False,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
+            bufsize=1,
         )
-        print(proc.stdout)
+        assert proc.stdout is not None
+        lines = []
+        for line in proc.stdout:  # tee: live to console + captured for trace
+            print(line, end="", flush=True)
+            lines.append(line)
+        proc.wait()
         _restore(cfg_path.parent, snap)
         result = _bench(cfg_path)
         (trace_dir / f"attempt_{attempt}.log").write_text(
             f"# attempt {attempt}  model={model}\n\n=== PROMPT ===\n{prompt}\n\n"
-            f"=== AGENT TRANSCRIPT ===\n{proc.stdout}\n{proc.stderr}\n\n"
+            f"=== AGENT TRANSCRIPT ===\n{''.join(lines)}\n\n"
             f"=== BENCH VERDICT ===\n{json.dumps(result, indent=2)}\n"
         )
 
