@@ -41,7 +41,15 @@ Establish the bar a kernel must beat: GPU time + peak memory for eager vs `torch
 
 Config-driven — the only input is `configs/<name>/config.json`. `src/benchmark/baseline.py` reads the task identity + `benchmark` knobs (`warmup`, `iters`, `compile_mode`), seeds before building (reproducible), times with CUDA events (median), tracks `torch.cuda.max_memory_allocated`, and writes `configs/<name>/res.json` in the same folder.
 
-Orchestration: `python3 src/run.py --config configs/<name>/config.json` runs every stage; its only input is a config path. The console shows just the header panel, one progress bar per phase, and the final results table — all verbose output (stage prints, torch chatter, failure tracebacks) goes to `configs/<name>/run.log`, sectioned per phase. On failure: a one-line console pointer to the log, exit 1.
+Orchestration via the CLI (`src/cli.py`, Typer). The agent uses only two verbs: `build` (Phase 6 only) and `run` (full pipeline). `config` is human prep.
+
+```
+python3 src/cli.py config --level 3 --problem 4              # human: make config.json (review knobs)
+python3 src/cli.py build  --config configs/<name>/config.json  # agent: kernel-builder build only
+python3 src/cli.py run    --config configs/<name>/config.json  # agent: benchmark + profile + build
+```
+
+`run` shows just the header panel, one progress bar per phase, and the final results table — all verbose output (stage prints, torch chatter, failure tracebacks) goes to `configs/<name>/run.log`, sectioned per phase. On failure: a one-line console pointer to the log, exit 1. `build` exits 0 if `build.json` passed else 1.
 
 Reports, for each of eager and `torch.compile`:
 
