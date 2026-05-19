@@ -25,11 +25,11 @@ testpaths = ["tests"]
 line-length = 100
 target-version = "py310"
 src = ["src"]
-extend-exclude = ["configs"]
+extend-exclude = ["configs", "examples"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.pyrefly]
 search-path = ["src"]
-project-excludes = ["configs", "**/__pycache__"]
+project-excludes = ["configs", "examples", "**/__pycache__"]

@@ -1,0 +1,16 @@
+{
+  "task": {
+    "level": 1,
+    "problem_id": 88,
+    "name": "88_MinGPTNewGelu"
+  },
+  "device": "NVIDIA RTX A1000 Laptop GPU",
+  "compile_mode": "max-autotune",
+  "inductor_code": "inductor.py",
+  "num_graphs": 1,
+  "triton_kernels": [
+    "triton_poi_fused_add_mul_pow_tanh_0"
+  ],
+  "num_triton_kernels": 1,
+  "note": "inductor_code is torch.compile's fused output \u2014 the bar. Mine it for fusion/tiling ideas; the custom kernel must beat it."
+}

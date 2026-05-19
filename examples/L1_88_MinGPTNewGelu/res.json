@@ -1,0 +1,19 @@
+{
+  "task": {
+    "level": 1,
+    "problem_id": 88,
+    "name": "88_MinGPTNewGelu"
+  },
+  "device": "NVIDIA RTX A1000 Laptop GPU",
+  "baseline": {
+    "eager": {
+      "time_ms": 28.65971,
+      "peak_mem_mb": 1024.0
+    },
+    "compile": {
+      "time_ms": 6.50906,
+      "peak_mem_mb": 256.0
+    },
+    "compile_speedup": 4.403
+  }
+}

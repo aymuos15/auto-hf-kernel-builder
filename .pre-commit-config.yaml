@@ -6,11 +6,13 @@ repos:
         entry: ruff check --fix
         language: system
         types: [python]
+        exclude: ^examples/
       - id: ruff-format
         name: ruff (format)
         entry: ruff format
         language: system
         types: [python]
+        exclude: ^examples/
       - id: pyrefly
         name: pyrefly (typecheck)
         entry: pyrefly check

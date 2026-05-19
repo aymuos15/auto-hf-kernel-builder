@@ -1,0 +1,39 @@
+{
+  "task": {
+    "level": 1,
+    "problem_id": 88,
+    "name": "88_MinGPTNewGelu"
+  },
+  "env": {
+    "device": "cuda",
+    "gpu": "NVIDIA RTX A1000 Laptop GPU",
+    "compute_capability": "8.6",
+    "vram_gb": 3.68,
+    "torch": "2.10.0+cu128",
+    "cuda": "12.8",
+    "nix": "nix (Determinate Nix 3.20.0) 2.34.6"
+  },
+  "benchmark": {
+    "warmup": 10,
+    "iters": 50,
+    "compile_mode": "max-autotune"
+  },
+  "correctness": {
+    "rtol": 0.02,
+    "atol": 0.02
+  },
+  "perf": {
+    "min_speedup_vs_compile": 1.05
+  },
+  "build": {
+    "kernel_builder": "github:huggingface/kernel-builder/b4accba4496b28faef19a0487fbcf9686b14e2ef",
+    "nix_attr": ".#bundle",
+    "universal": true
+  },
+  "loop": {
+    "max_retries": 5
+  },
+  "agent": {
+    "model": "github-copilot/gemini-3-flash-preview"
+  }
+}

@@ -1,0 +1,8 @@
+# config.json  2026-05-19T17:34:38
+
+===== Phase 3 · Benchmark =====
+wrote /home/localssk23/hf/configs/L1_88_MinGPTNewGelu/res.json
+  eager   28.65971 ms / 1024.0 MB   compile 6.50906 ms / 256.0 MB   (4.4030x)
+
+===== Phase 4 · Profile =====
+wrote /home/localssk23/hf/configs/L1_88_MinGPTNewGelu/prof.json  (1 triton kernels, 1 graphs) -> inductor.py

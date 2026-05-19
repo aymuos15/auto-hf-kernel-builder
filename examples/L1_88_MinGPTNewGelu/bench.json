@@ -1,0 +1,16 @@
+{
+  "task": {
+    "level": 1,
+    "problem_id": 88,
+    "name": "88_MinGPTNewGelu"
+  },
+  "max_abs_diff": 0.0,
+  "kernel_ms": 3.23482,
+  "compile_ms": 6.50906,
+  "speedup_vs_compile": 2.0122,
+  "min_speedup": 1.05,
+  "triton_launches": 1,
+  "passed": true,
+  "error_class": null,
+  "built": true
+}
