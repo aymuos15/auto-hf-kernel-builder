@@ -8,10 +8,12 @@ Stops on pass or config loop.max_retries.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -61,6 +63,9 @@ def _prompt(name: str, bench_json: Path) -> str:
 
 
 def _bench(cfg_path: Path) -> dict:
+    queue = os.environ.get("AK_QUEUE")
+    if queue:
+        return _bench_via_queue(cfg_path, queue)
     subprocess.run(
         [sys.executable, str(REPO / "src" / "cli.py"), "bench", "--config", str(cfg_path)],
         cwd=REPO,
@@ -72,6 +77,31 @@ def _bench(cfg_path: Path) -> dict:
         if bj.is_file()
         else {"passed": False, "error_class": "no_bench_json"}
     )
+
+
+def _bench_via_queue(cfg_path: Path, queue: str, timeout: float = 3600.0) -> dict:
+    """Submit the bench job to the durable queue and wait for a worker
+    to produce the verdict (decouples kernel execution from the solve
+    driver; the worker can later run it sandboxed)."""
+    sys.path.insert(0, str(REPO / "src"))
+    from worker.queue import Queue
+
+    q = Queue(queue)
+    jid = q.enqueue(str(cfg_path))
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        row = q.get(jid)
+        if row and row["state"] in ("done", "failed"):
+            return (
+                json.loads(row["verdict"])
+                if row["verdict"]
+                else {
+                    "passed": False,
+                    "error_class": "no_bench_json",
+                }
+            )
+        time.sleep(2.0)
+    return {"passed": False, "error_class": "queue_timeout"}
 
 
 def solve(config_path: str) -> None:

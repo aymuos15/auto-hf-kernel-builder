@@ -57,6 +57,44 @@ def solve(config: Path = _CONFIG) -> None:
     solve_loop(str(config))
 
 
+_DEFAULT_QUEUE = str(Path(__file__).resolve().parents[1] / "configs" / "queue.db")
+
+
+@app.command()
+def enqueue(
+    config: Path = _CONFIG,
+    queue: str = typer.Option(_DEFAULT_QUEUE, "--queue"),
+    attempt: int = typer.Option(0, "--attempt"),
+) -> None:
+    """Enqueue a bench job for a config dir (durable queue)."""
+    from worker.queue import Queue
+
+    jid = Queue(queue).enqueue(str(config), attempt)
+    print(f"enqueued job {jid} -> {queue}")
+
+
+@app.command()
+def worker(
+    queue: str = typer.Option(_DEFAULT_QUEUE, "--queue"),
+    lease: float = typer.Option(1800.0, "--lease"),
+) -> None:
+    """Run one persistent worker bound to the current GPU env."""
+    from worker.pool import worker_loop
+
+    worker_loop(queue, lease_secs=lease)
+
+
+@app.command()
+def pool(
+    gpus: str = typer.Option(..., "--gpus", help="comma-separated GPU ids, e.g. 0,1"),
+    queue: str = typer.Option(_DEFAULT_QUEUE, "--queue"),
+) -> None:
+    """Launch one persistent worker per GPU (single-box pool)."""
+    from worker.pool import serve
+
+    serve(queue, [int(g) for g in gpus.split(",") if g.strip() != ""])
+
+
 @app.command()
 def config(
     level: int = typer.Option(..., "--level"),
