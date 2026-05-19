@@ -25,7 +25,7 @@ The agent never runs anything; the loop owns iteration and bench.
 | 2 Env + Config | `src/env/extract.py`, `src/env/create.py` | `config.json`, `reference.py` |
 | 3 Benchmark | `src/benchmark/baseline.py` | `res.json` |
 | 4 Profile | `src/profiling/inductor.py` | `prof.json`, `inductor.py` |
-| 5 Solve | `src/agent/loop.py` + `prompt.md`; per turn: `src/kernels/scaffold.py` (kernel seam), `src/bench.py`, `src/kernels/builder.py` | `kernel.py`, `bench.json` (+ `build.json`, `kernel/` on pass) |
+| 5 Solve | `src/agent/loop.py` + `prompt.md`; per turn: `src/kernels/scaffold.py` (kernel seam), `src/bench.py`, `src/kernels/builder.py` | `kernel.py`, `bench.json`, `trace/attempt_N.log` (+ `build.json`, `kernel/` on pass) |
 
 Phases 1–4 are `config` (1–2) + `setup` (3–4). Phase 5 (Solve) is the agent loop; each iteration it writes `kernel.py` and benches it. All artifacts live in `configs/<name>/`.
 
@@ -116,6 +116,8 @@ The code-owned agent loop. `src/agent/loop.py` (CLI `solve`, human-started; neve
 3. the **loop** runs `bench` (subprocess) and reads `bench.json`.
 4. pass → stop. else keep-best (highest correct speedup) + revert-on-regression, feed `error_class` into the next prompt.
 
+Every turn's full agent transcript + the prompt sent + the bench verdict are saved to `configs/<name>/trace/attempt_N.log` (survives integrity-restore; gitignored with the rest of `configs/`).
+
 The agent has no shell and never runs `bench` — the loop does, between turns. Threat model is minimal for now (lock + integrity restore); `kernel.py` is still executed in-process by `bench`, so a containerized/subprocess-isolated bench is the deferred hardening.
 
 ## The kernel seam
@@ -163,4 +165,4 @@ Speed: pinned rev + HF Cachix substituter (download, don't compile) + reused `fl
 
 # Tracking
 
-`configs/<name>/config.json` is the only tracked input. Everything else in the folder — `reference.py`, `kernel.py`, `res.json`, `prof.json`, `inductor.py`, `run.log`, `build.json`, `bench.json`, `kernel/` — is derived and gitignored.
+Nothing in `configs/` is tracked (it's per-machine, regenerable). `config.json` is the input; `reference.py`, `kernel.py`, `res.json`, `prof.json`, `inductor.py`, `run.log`, `build.json`, `bench.json`, `trace/`, `kernel/` are all derived. All gitignored.

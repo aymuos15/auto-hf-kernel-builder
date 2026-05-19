@@ -23,7 +23,7 @@ def _git_clean_tree() -> bool:
     return r.returncode == 0 and not r.stdout.strip()
 
 
-_SKIP = shutil.ignore_patterns("kernel", "__pycache__")
+_SKIP = shutil.ignore_patterns("kernel", "trace", "__pycache__")
 
 
 def _snapshot(cfg_dir: Path) -> Path:
@@ -87,17 +87,28 @@ def solve(config_path: str) -> None:
         raise SystemExit(2)
 
     snap = _snapshot(cfg_path.parent)
+    trace_dir = cfg_path.parent / "trace"
+    trace_dir.mkdir(exist_ok=True)
     best = {"speedup": None, "kernel": None}
 
     for attempt in range(1, max_retries + 1):
         print(f"\n=== solve {name}: attempt {attempt}/{max_retries} ===")
-        subprocess.run(
-            ["opencode", "run", "--model", model, _prompt(name, cfg_path.with_name("bench.json"))],
+        prompt = _prompt(name, cfg_path.with_name("bench.json"))
+        proc = subprocess.run(
+            ["opencode", "run", "--model", model, prompt],
             cwd=REPO,
             check=False,
+            capture_output=True,
+            text=True,
         )
+        print(proc.stdout)
         _restore(cfg_path.parent, snap)
         result = _bench(cfg_path)
+        (trace_dir / f"attempt_{attempt}.log").write_text(
+            f"# attempt {attempt}  model={model}\n\n=== PROMPT ===\n{prompt}\n\n"
+            f"=== AGENT TRANSCRIPT ===\n{proc.stdout}\n{proc.stderr}\n\n"
+            f"=== BENCH VERDICT ===\n{json.dumps(result, indent=2)}\n"
+        )
 
         if result.get("passed"):
             print(f"PASS on attempt {attempt} ({result.get('speedup_vs_compile')}x vs compile)")
