@@ -40,13 +40,20 @@ def _load_kernel(kernel_py: Path):
 
 @contextlib.contextmanager
 def _triton_counter():
+    """Count @triton.jit launches and the largest tensor any launch
+    touched. max_numel lets bench reject a no-op fig-leaf kernel (a
+    tiny launch on a throwaway tensor) used only to satisfy n>0 while
+    the real work is torch passthrough."""
     from triton.runtime.jit import JITFunction
 
-    box = {"n": 0}
+    box = {"n": 0, "max_numel": 0}
     orig = JITFunction.run
 
     def run(self, *a, **k):
         box["n"] += 1
+        for v in (*a, *k.values()):
+            if torch.is_tensor(v):
+                box["max_numel"] = max(box["max_numel"], v.numel())
         return orig(self, *a, **k)
 
     JITFunction.run = run
@@ -54,6 +61,33 @@ def _triton_counter():
         yield box
     finally:
         JITFunction.run = orig
+
+
+@contextlib.contextmanager
+def _autocast_tripwire():
+    """Trip if the kernel runs under reduced-precision CUDA autocast.
+    The frozen baseline is measured in the reference's native dtype
+    (fp32); a kernel that wraps the reference model in bf16/fp16
+    autocast 'beats' it on precision, not on a real kernel — an
+    apples-to-oranges speedup. Caught here, not via output dtype (the
+    cheat upcasts the result back to fp32 on return)."""
+    box = {"tripped": False, "dtype": None}
+    orig = torch.autocast.__enter__
+
+    def enter(self):
+        if getattr(self, "device", None) == "cuda" and getattr(self, "fast_dtype", None) in (
+            torch.bfloat16,
+            torch.float16,
+        ):
+            box["tripped"] = True
+            box["dtype"] = str(self.fast_dtype)
+        return orig(self)
+
+    torch.autocast.__enter__ = enter
+    try:
+        yield box
+    finally:
+        torch.autocast.__enter__ = orig
 
 
 def run_from_config(config_path: str) -> Path:
@@ -92,7 +126,7 @@ def run_from_config(config_path: str) -> Path:
         kern = _load_kernel(kernel_py)
         with torch.no_grad():
             ref_a, ref_b = model(*inputs_a), model(*inputs_b)
-            with _triton_counter() as tc:
+            with _triton_counter() as tc, _autocast_tripwire() as ac:
                 got_a = kern(*inputs_a)
             got_a2 = kern(*inputs_a)
             got_b = kern(*inputs_b)
@@ -109,6 +143,17 @@ def run_from_config(config_path: str) -> Path:
         return fail("nondeterministic", detail="same input gave different output")
     if tc["n"] == 0:
         return fail("no_triton", detail="no @triton.jit kernel launched")
+    if tc["max_numel"] < ref_a.numel() // 4:
+        return fail(
+            "triton_figleaf",
+            detail=f"largest triton tensor {tc['max_numel']} elems vs output "
+            f"{ref_a.numel()}; launch does not touch output-scale data",
+        )
+    if ac["tripped"]:
+        return fail(
+            "precision_cheat",
+            detail=f"kernel ran under cuda {ac['dtype']} autocast; baseline is fp32",
+        )
 
     b = cfg["benchmark"]
     with torch.no_grad():
