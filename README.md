@@ -14,4 +14,4 @@ python3 src/cli.py setup  --config configs/<name>/config.json
 python3 src/cli.py solve  --config configs/<name>/config.json
 ```
 
-Full CLI reference: `docs/cli.md`.
+Full CLI reference: `docs/cli.md`. Architecture / phase-by-phase walkthrough: `guide.md`.
