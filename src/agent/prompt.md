@@ -32,7 +32,7 @@ Each turn: edit `configs/<name>/kernel.py`, then stop. The harness benches it an
 
 - `configs/<name>/reference.py` — the exact `Model` you must reproduce (the spec).
 - `configs/<name>/config.json` — task identity, tolerances, the speed bar.
-- `configs/<name>/inductor.py` + `prof.json` — what `torch.compile` fused/generated. This **is** the bar; mine it for fusion/tiling/block-size ideas — to beat it you must out-fuse or out-tune it.
+- `configs/<name>/inductor.py` + `prof.json` — what `torch.compile` fused/generated. This **is** the bar and your only profiler output (you cannot run a profiler); mine it for the dominant fused region — to beat it you must out-fuse or out-tune *that* (see the profile-and-target skill).
 - `configs/<name>/res.json` — the frozen compile time you must beat.
 - `configs/<name>/kernel.py` — the only file you edit; `kernel(*inputs)` is the entry point.
 
@@ -40,9 +40,9 @@ Each turn: edit `configs/<name>/kernel.py`, then stop. The harness benches it an
 
 `skills/INDEX.md` is a selector. Before each turn, read the **one** skill that matches your situation and follow its reasoning process and design rules:
 
-- writing the kernel the first time, or after `kernel_exception` / `no_triton` / `triton_figleaf` / `precision_cheat` → `skills/triton/write-triton-kernel/SKILL.md` (or the op-specific skill if the reference is clearly softmax / matmul-linear / layernorm-rmsnorm / attention — see `skills/INDEX.md`).
+- writing the kernel the first time, or after `kernel_exception` / `no_triton` / `triton_figleaf` / `precision_cheat` → `skills/triton/profile-and-target-kernel/SKILL.md` to pick the target, then `skills/triton/write-triton-kernel/SKILL.md` (or the op-specific skill if the reference is clearly softmax / matmul-linear / layernorm-rmsnorm / attention — see `skills/INDEX.md`).
 - `numeric_mismatch` / `nondeterministic` → `skills/triton/debug-triton-correctness/SKILL.md`.
-- `slower_than_compile` → `skills/triton/optimize-triton-block-parameters/SKILL.md`.
+- `slower_than_compile` → `skills/triton/profile-and-target-kernel/SKILL.md` (what to attack), then `skills/triton/optimize-triton-block-parameters/SKILL.md` (tune it).
 
 These are guidance, not files to edit. Reading them is allowed and expected; you still edit only `kernel.py`.
 

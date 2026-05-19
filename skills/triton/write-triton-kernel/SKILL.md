@@ -51,7 +51,8 @@ Guide the agent through authoring a correct, launch-safe `@triton.jit` kernel fo
 - The Python wrapper must do the real launch every call — do not import or run the reference model to produce the result (torch passthrough is a cheat the harness detects).
 - Output dtype and shape must match the reference exactly; never downcast precision to gain speed.
 - No host-side Python loop over tiles; the grid expresses parallelism.
-- Transcendental API varies by Triton version: `tl.exp`/`tl.rsqrt`/`tl.sqrt` are stable, but `tl.tanh` does not exist on all versions (it lives in `libdevice`). Prefer expressing `tanh` via `tl.exp` (`tanh(z) = 1 - 2/(exp(2z)+1)`) so the kernel is version-proof.
+- Transcendental API: `tl.exp`/`tl.rsqrt`/`tl.sqrt` are stable across versions. `tl.tanh` does **not** exist on all versions. For accuracy (e.g. exact GELU's `erf`) prefer libdevice — `tl.extra.cuda.libdevice.erf` / `.tanh` (CUDA; the HIP path differs, so it is backend-specific). For a version- and backend-proof fallback, express `tanh` via `tl.exp` (`tanh(z) = 1 - 2/(exp(2z)+1)`). Pick libdevice when you need exactness and know the backend; the exp identity when you need portability.
+- The harness calls `kernel(*inputs)` **many times per bench**: warmup, two different input sets, a determinism re-run on the same input, and the timed perf loop. The kernel must stay correct under repeated calls with varying inputs and hold no state that aliases across calls. If you keep a persistent/compiled module (`torch.compile`, a cached buffer), **clone the returned tensor** and call `torch.compiler.cudagraph_mark_step_begin()` before each invocation — CUDA-graph buffer reuse otherwise overwrites a prior call's output and yields `kernel_exception` ("tensor output of CUDAGraphs overwritten") or `nondeterministic`.
 
 ---
 

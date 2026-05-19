@@ -1,0 +1,13 @@
+{
+  "id": "triton.profile-and-target-kernel",
+  "name": "Profile and Target a Triton Kernel",
+  "category": "triton",
+  "summary": "Read the harness-provided torch.compile profile (inductor.py + prof.json) as the profiler output, find the dominant fused region, roofline-classify it, and decide what to fuse or tile before writing or optimizing.",
+  "tags": ["triton", "profiling", "roofline", "inductor", "targeting", "performance"],
+  "difficulty": "intermediate",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.optimize-triton-block-parameters"],
+  "version": "0.1.0",
+  "entry": "skills/triton/profile-and-target-kernel/SKILL.md"
+}

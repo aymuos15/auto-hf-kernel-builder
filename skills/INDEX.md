@@ -7,6 +7,7 @@ Selector for read-by-path skill injection. A harness/prompt picks the **one** ma
 | id | use when | path |
 |---|---|---|
 | `triton.write-triton-kernel` | authoring a new `@triton.jit` kernel for an elementwise/reduction op (no op-specific skill fits) | `skills/triton/write-triton-kernel/SKILL.md` |
+| `triton.profile-and-target-kernel` | decide *what* to fuse/tile from the provided `inductor.py`/`prof.json` profile (before writing, or on `slower_than_compile`) | `skills/triton/profile-and-target-kernel/SKILL.md` |
 | `triton.optimize-triton-block-parameters` | kernel is correct but `slower_than_compile`; tune BLOCK_SIZE/num_warps/num_stages/autotune | `skills/triton/optimize-triton-block-parameters/SKILL.md` |
 | `triton.debug-triton-correctness` | `numeric_mismatch` or `nondeterministic` verdict; classify and fix the bug | `skills/triton/debug-triton-correctness/SKILL.md` |
 | `triton.write-triton-softmax-kernel` | the op is row-wise softmax (optionally masked/scaled) | `skills/triton/write-triton-softmax-kernel/SKILL.md` |
@@ -22,4 +23,4 @@ Selector for read-by-path skill injection. A harness/prompt picks the **one** ma
 
 ## Selection rule
 
-Map the harness `error_class` to a skill: `slower_than_compile` → optimize; `numeric_mismatch`/`nondeterministic` → debug; first attempt / no kernel → write (prefer the op-specific softmax/gemm/layernorm/attention skill when the reference op matches one, else the general `write-triton-kernel`). Inject that one skill's `SKILL.md`; do not paste the whole library.
+Map the harness `error_class` to a skill: `slower_than_compile` → profile-and-target (pick what to attack) then optimize (tune it); `numeric_mismatch`/`nondeterministic` → debug; first attempt / no kernel → profile-and-target then write (prefer the op-specific softmax/gemm/layernorm/attention skill when the reference op matches one, else the general `write-triton-kernel`). Inject that one skill's `SKILL.md`; do not paste the whole library.

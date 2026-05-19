@@ -15,7 +15,7 @@ Systematically diagnose a Triton kernel that fails the harness `numeric_mismatch
 
 - `error_class: kernel_exception` — that is a crash, not a numeric bug; read the traceback first.
 - `error_class: slower_than_compile` — correctness is fine; use the optimize skill.
-- `error_class: triton_figleaf` / `precision_cheat` — the kernel is not really computing the result / is downcasting precision; rewrite honestly using the write skill, do not "debug".
+- `error_class: triton_figleaf` / `precision_cheat` / `reference_import` — not a correctness bug to debug; see "Anti-cheat verdicts" below.
 
 ---
 
@@ -38,6 +38,7 @@ Systematically diagnose a Triton kernel that fails the harness `numeric_mismatch
 | Correct for power-of-2 sizes, wrong otherwise | BLOCK_SIZE doesn't cover the axis / tail not masked | BLOCK_SIZE = `next_power_of_2(D)`; mask the tail; never autotune a reduction-covering block |
 | Off-by-stride / transposed-looking output | assumed contiguity; used shape as stride | pass real strides as kernel args; index with them |
 | Differs run-to-run (nondeterministic) | races on a shared accumulator, or uninitialized memory read | one program per output region, or atomics; `torch.empty` outputs must be fully written |
+| `kernel_exception` "tensor output of CUDAGraphs overwritten", or nondeterministic only when a persistent compiled module is reused | bench calls `kernel` many times; a `torch.compile`/CUDA-graph buffer is reused so a later call overwrites an earlier call's still-referenced output | `.clone()` the returned tensor; call `torch.compiler.cudagraph_mark_step_begin()` before each invocation; do not return a view into a persistent/cudagraph buffer |
 | Wrong only on masked-softmax / attention rows | additive mask applied after exp instead of before max | add mask to logits before `tl.max` |
 | Tiny diff just above tolerance | genuine fp ordering vs torch | confirm fp32 accumulation; if still over, the algorithm differs — re-derive, do not loosen tolerance |
 
@@ -61,3 +62,16 @@ Systematically diagnose a Triton kernel that fails the harness `numeric_mismatch
 - Strides are arguments, never assumptions.
 - A nondeterministic kernel is always a real bug (race / uninitialized read), never acceptable noise.
 - Do not change tolerance or pass through the reference to make the gate green.
+
+---
+
+## Anti-cheat verdicts (`no_triton` / `triton_figleaf` / `precision_cheat` / `reference_import`)
+
+These are not correctness bugs and there is **no superficial way to satisfy them** — they all mean the same thing: *your kernel is not actually computing the result in Triton*. Every attempt to "get past the check" (a no-op launch, a tiny throwaway tensor, autocast, importing or dynamically importing the reference model) is detected and, even when not, cannot beat `torch.compile` because it is just the reference again. The only resolution is to do the real work:
+
+- `no_triton` — no `@triton.jit` ran. Implement the computation as a real Triton kernel.
+- `triton_figleaf` — a Triton kernel ran but only on a tiny/throwaway tensor while torch did the real work. The Triton kernel must produce the actual output, on output-scale data.
+- `precision_cheat` — the result was produced under reduced-precision autocast vs an fp32 baseline. Compute in the reference dtype; a real speedup comes from the kernel, not from lowering precision.
+- `reference_import` — `kernel.py` imported or otherwise pulled in the reference model/library. Reproduce the math yourself in Triton (derive weights deterministically from the seed); do not import, `importlib`, or otherwise reach the reference.
+
+If you are here, switch strategy: read `skills/triton/write-triton-kernel/SKILL.md` (or the op-specific skill) and implement the actual algorithm. Hybrid (some torch + real Triton) is allowed as a stepping stone, but the Triton path must do real, output-scale work and the whole thing must still beat the bar honestly.
