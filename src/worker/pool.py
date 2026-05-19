@@ -16,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from worker.contract import run_job  # noqa: E402
 from worker.queue import Queue  # noqa: E402
+from worker.sandbox import run as run_sandboxed  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -36,7 +36,7 @@ def worker_loop(
                 continue
             jid = job["id"]
             try:
-                verdict = run_job(job["config_path"])
+                verdict = run_sandboxed(job["config_path"])
                 q.complete(jid, owner, verdict)
                 print(f"job {jid} {job['config_path']} -> {verdict.get('error_class') or 'PASS'}")
             except Exception as exc:  # a worker fault must not lose the job silently
