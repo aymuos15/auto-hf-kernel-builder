@@ -80,27 +80,36 @@ def run_from_config(config_path: str) -> Path:
 
     frag = bcfg["nix_attr"].split("#")[-1]
     target = f"path:{proj}#{frag}"
-    proc = subprocess.Popen(
-        ["bash", str(_BUILD_SH), str(proj), target],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    assert proc.stdout is not None
-    tail: deque[str] = deque(maxlen=200)
-    for line in proc.stdout:
-        print(line, end="", flush=True)
-        tail.append(line)
-    rc = proc.wait()
+    tries = int(bcfg.get("nix_retries", 3))
+    rc, log = 1, []
+    for i in range(1, tries + 1):
+        if i > 1:
+            print(f"build: retry {i}/{tries} (transient nix failure)")
+        proc = subprocess.Popen(
+            ["bash", str(_BUILD_SH), str(proj), target],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        assert proc.stdout is not None
+        tail: deque[str] = deque(maxlen=300)
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+            tail.append(line)
+        rc = proc.wait()
+        log.append(f"--- nix build try {i}/{tries} (rc={rc}) ---\n{''.join(tail)}")
+        if rc == 0:
+            break
 
+    out.with_name("build.log").write_text("\n".join(log))
     if rc == 0:
         record.update(passed=True, error_class=None)
         print(f"build: PASS ({pkg})")
     else:
         cls = _RC.get(rc, "build_error")
-        record.update(passed=False, error_class=cls, stderr_tail="".join(tail))
-        print(f"build: FAIL ({cls})")
+        record.update(passed=False, error_class=cls, stderr_tail=log[-1][-2000:])
+        print(f"build: FAIL ({cls}) after {tries} tries")
     out.write_text(json.dumps(record, indent=2))
     return out
 

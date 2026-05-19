@@ -25,7 +25,7 @@ The agent never runs anything; the loop owns iteration and bench.
 | 2 Env + Config | `src/env/extract.py`, `src/env/create.py` | `config.json`, `reference.py` |
 | 3 Benchmark | `src/benchmark/baseline.py` | `res.json` |
 | 4 Profile | `src/profiling/inductor.py` | `prof.json`, `inductor.py` |
-| 5 Solve | `src/agent/loop.py` + `prompt.md`; per turn: `src/kernels/scaffold.py` (kernel seam), `src/benchmark/bench.py`, `src/kernels/builder.py` | `kernel.py`, `bench.json`, `trace/attempt_N.log` (+ `build.json`, `kernel/` on pass) |
+| 5 Solve | `src/agent/loop.py` + `prompt.md`; per turn: `src/kernels/scaffold.py` (kernel seam), `src/benchmark/bench.py`, `src/kernels/builder.py` | `kernel.py`, `bench.json`, **`trace/attempt_N.log`** (prompt + full agent transcript + verdict + build log, one per attempt), `build.json`/`build.log`, `kernel/` |
 
 Phases 1–4 are `config` (1–2) + `setup` (3–4). Phase 5 (Solve) is the agent loop; each iteration it writes `kernel.py` and benches it. All artifacts live in `configs/<name>/`.
 
@@ -122,7 +122,7 @@ The agent has no shell and never runs `bench` — the loop does, between turns. 
 
 ## The kernel seam
 
-`configs/<name>/kernel.py` is the single file the agent edits: a callable `kernel(*inputs)` that must reproduce the whole task computation. `src/kernels/scaffold.py` only resolves it (errors if absent); it does not generate one.
+`configs/<name>/kernel.py` is the single file the agent edits: a callable `kernel(*inputs)` that must reproduce the whole task computation. Before attempt 1 the loop seeds a minimal `NotImplementedError` stub if it is absent (so the agent has a concrete file to edit, not a missing path). `src/kernels/scaffold.py` only resolves it for `bench` (errors if absent).
 
 ## Bench
 
@@ -151,8 +151,8 @@ Requires a prior `setup` (for `res.json`). No prior `build` needed — `bench` r
 Hard requirement (maintainer): a passing kernel must compile and build with HF **kernel-builder**. `src/kernels/builder.py` runs this as step 3 of `bench` (or standalone via the `build` verb):
 
 - `assemble.sh` turns `kernel.py` into a kernel-builder universal-Triton project: `configs/<name>/kernel/{build.toml, flake.nix, torch-ext/<pkg>/__init__.py}`. `flake.nix` (template `src/kernels/flake.nix`) pins kernel-builder to `b4accba…` (proven, cache-backed).
-- `build.sh` runs `nix build --accept-flake-config path:<proj>#bundle -o result` (`path:` so the gitignored project is visible to Nix).
-- writes `build.json`.
+- `build.sh` runs `nix build --accept-flake-config path:<proj>#bundle -o result` (`path:` so the gitignored project is visible to Nix), retried up to `config.build.nix_retries` (default 3) — the kernel-builder bundle build is occasionally a transient "1 dependency failed", and a correct kernel builds on retry.
+- writes `build.json` + `build.log` (full nix output of every try; folded into the attempt's `trace/`).
 
 Speed: pinned rev + HF Cachix substituter (download, don't compile) + reused `flake.lock` + warm `/nix/store` + a content-hash skip (unchanged `kernel.py` + prior pass + `result` present → no nix invocation). First build ≈ minutes (cold closure); thereafter seconds.
 

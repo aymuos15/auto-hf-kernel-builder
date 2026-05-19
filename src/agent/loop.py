@@ -86,6 +86,15 @@ def solve(config_path: str) -> None:
         print("refusing: git tree is dirty (commit/stash first)")
         raise SystemExit(2)
 
+    if not kernel_py.exists():
+        kernel_py.write_text(
+            '"""AGENT SEAM: implement kernel(*inputs) — a real @triton.jit '
+            "kernel reproducing reference.py within tolerance and beating "
+            'the bar. See the config folder + prompt."""\n\n\n'
+            "def kernel(*inputs):\n"
+            '    raise NotImplementedError("write the Triton kernel here")\n'
+        )
+
     snap = _snapshot(cfg_path.parent)
     trace_dir = cfg_path.parent / "trace"
     trace_dir.mkdir(exist_ok=True)
@@ -110,10 +119,13 @@ def solve(config_path: str) -> None:
         proc.wait()
         _restore(cfg_path.parent, snap)
         result = _bench(cfg_path)
+        blog = cfg_path.with_name("build.log")
+        build_log = blog.read_text() if blog.is_file() else "(no build attempted)"
         (trace_dir / f"attempt_{attempt}.log").write_text(
             f"# attempt {attempt}  model={model}\n\n=== PROMPT ===\n{prompt}\n\n"
             f"=== AGENT TRANSCRIPT ===\n{''.join(lines)}\n\n"
-            f"=== BENCH VERDICT ===\n{json.dumps(result, indent=2)}\n"
+            f"=== BENCH VERDICT ===\n{json.dumps(result, indent=2)}\n\n"
+            f"=== BUILD LOG ===\n{build_log}\n"
         )
 
         if result.get("passed"):

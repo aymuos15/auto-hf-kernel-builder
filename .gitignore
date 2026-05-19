@@ -3,7 +3,7 @@
 # and restores it. Fully ignored so git status/clean stay correct.
 configs/
 data/
-docs/
+docs/failure_modes.md
 __pycache__/
 *.pyc
 secrets.env

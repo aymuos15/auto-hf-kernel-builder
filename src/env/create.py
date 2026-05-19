@@ -27,6 +27,7 @@ DEFAULTS = {
         "kernel_builder": f"github:huggingface/kernel-builder/{_KB_REV}",
         "nix_attr": ".#bundle",
         "universal": True,
+        "nix_retries": 3,
     },
     "loop": {"max_retries": 5},
     "agent": {"model": "github-copilot/gemini-3-flash-preview"},
