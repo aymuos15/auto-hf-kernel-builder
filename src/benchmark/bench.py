@@ -5,15 +5,16 @@ check, and a real @triton.jit launch is required (defeats torch
 passthrough). ONLY once correct AND faster than the frozen bar does it
 build with kernel-builder to confirm compatibility.
 
-Reference is regenerated deterministically from config.task + SEED
-(weights fixed by SEED; inputs varied per seed) — nothing frozen to
-disk. The bar is the compile time in res.json (from setup); never
-re-measured here.
+Reference inputs/outputs are loaded from the frozen ref.pt (written by
+setup's freeze_reference). bench never builds or imports the reference
+model — so the reference and its deps (e.g. transformers) are not in
+this process at all, which structurally defeats the import/passthrough
+cheat family (the prior in-process build was the leak). The bar is the
+compile time in res.json (from setup); never re-measured here.
 
 Config-driven: input is configs/<name>/config.json. Writes bench.json.
 """
 
-import ast
 import contextlib
 import importlib.util
 import json
@@ -24,37 +25,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import torch  # noqa: E402
 
-from benchmark.baseline import SEED, _build, _measure, make_inputs  # noqa: E402
+from benchmark.baseline import _measure, _top_imports  # noqa: E402
 from kernels.builder import run_from_config as build_kernel  # noqa: E402
 from kernels.scaffold import scaffold  # noqa: E402
-from task.load import load_task  # noqa: E402
-
-_KERNEL_ALLOWED_IMPORTS = frozenset(
-    {
-        "torch",
-        "triton",
-        "math",
-        "typing",
-        "__future__",
-        "dataclasses",
-        "functools",
-        "itertools",
-        "operator",
-        "collections",
-    }
-)
-
-
-def _top_imports(src: str) -> set[str]:
-    """Top-level module names imported anywhere in src (incl. inside
-    functions — defeats a lazy import that dodges a build-time check)."""
-    mods: set[str] = set()
-    for node in ast.walk(ast.parse(src)):
-        if isinstance(node, ast.Import):
-            mods.update(a.name.split(".")[0] for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-            mods.add(node.module.split(".")[0])
-    return mods
 
 
 def _load_kernel(kernel_py: Path):
@@ -136,14 +109,20 @@ def run_from_config(config_path: str) -> Path:
         return fail("no_baseline", detail="run setup first (no res.json)")
     compile_ms = json.loads(res.read_text())["baseline"]["compile"]["time_ms"]
 
+    refp = cfg_path.with_name("ref.pt")
+    if not refp.is_file():
+        return fail("no_baseline", detail="run setup first (no ref.pt)")
+    frozen = torch.load(refp, map_location="cpu", weights_only=False)
+
     try:
         kernel_py = scaffold(config_path)
     except FileNotFoundError:
         return fail("no_kernel", detail=f"missing kernel.py in {cfg_path.parent}")
 
-    task = load_task(t["level"], t["problem_id"])
-
-    ref_deps = _top_imports(task.code) - _KERNEL_ALLOWED_IMPORTS
+    # belt-and-suspenders only: the real boundary is that bench never
+    # builds/imports the reference (frozen tensors below), so the task
+    # deps are not even in this process.
+    ref_deps = set(frozen["meta"].get("ref_deps", []))
     try:
         kern_imports = _top_imports(kernel_py.read_text())
     except SyntaxError:
@@ -156,8 +135,13 @@ def run_from_config(config_path: str) -> Path:
             "computation in Triton — importing or running the reference model is a cheat",
         )
 
-    model, inputs_a = _build(task, "cuda")
-    inputs_b = make_inputs(task, "cuda", SEED + 1)
+    def _to_cuda(xs):
+        return [x.to("cuda") if torch.is_tensor(x) else x for x in xs]
+
+    inputs_a = _to_cuda(frozen["inputs_a"])
+    inputs_b = _to_cuda(frozen["inputs_b"])
+    ref_a = frozen["ref_a"].to("cuda")
+    ref_b = frozen["ref_b"].to("cuda")
     c = cfg["correctness"]
     rtol, atol = float(c["rtol"]), float(c["atol"])
 
@@ -167,7 +151,6 @@ def run_from_config(config_path: str) -> Path:
     try:
         kern = _load_kernel(kernel_py)
         with torch.no_grad():
-            ref_a, ref_b = model(*inputs_a), model(*inputs_b)
             with _triton_counter() as tc, _autocast_tripwire() as ac:
                 got_a = kern(*inputs_a)
             got_a2 = kern(*inputs_a)
