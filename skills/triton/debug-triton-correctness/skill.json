@@ -1,0 +1,13 @@
+{
+  "id": "triton.debug-triton-correctness",
+  "name": "Debug Triton Kernel Correctness",
+  "category": "triton",
+  "summary": "Diagnose and fix a Triton kernel that fails the harness numeric_mismatch or nondeterministic gate by classifying the bug into masking, stride, accumulation-precision, reduction-axis, or race categories.",
+  "tags": ["triton", "debugging", "correctness", "masking", "numerical-stability"],
+  "difficulty": "intermediate",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.write-triton-kernel"],
+  "version": "0.1.0",
+  "entry": "skills/triton/debug-triton-correctness/SKILL.md"
+}

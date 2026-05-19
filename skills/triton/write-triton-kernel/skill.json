@@ -1,0 +1,12 @@
+{
+  "id": "triton.write-triton-kernel",
+  "name": "Write a Triton Kernel",
+  "category": "triton",
+  "summary": "Author a correct, launch-safe @triton.jit kernel for an elementwise or reduction op: grid/program assignment, strided pointers, masking, fp32 accumulation, and a real launch from Python.",
+  "tags": ["triton", "gpu-kernels", "masking", "strides", "fp32-accumulation", "authoring"],
+  "difficulty": "intermediate",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "version": "0.1.0",
+  "entry": "skills/triton/write-triton-kernel/SKILL.md"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "triton.write-triton-softmax-kernel",
+  "name": "Write Triton Softmax Kernel",
+  "category": "triton",
+  "summary": "Implement numerically stable row-wise softmax in Triton with one-program-per-row, fp32 max+sum reduction, tail masking, and the additive-mask variant for attention.",
+  "tags": ["triton", "softmax", "numerical-stability", "masking", "reduction"],
+  "difficulty": "intermediate",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.write-triton-kernel"],
+  "version": "0.1.0",
+  "entry": "skills/triton/write-triton-softmax-kernel/SKILL.md"
+}

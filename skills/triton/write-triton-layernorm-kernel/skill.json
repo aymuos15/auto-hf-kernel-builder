@@ -1,0 +1,13 @@
+{
+  "id": "triton.write-triton-layernorm-kernel",
+  "name": "Write Triton LayerNorm Kernel",
+  "category": "triton",
+  "summary": "Implement fused LayerNorm/RMSNorm in Triton with one-program-per-row, fp32 mean/variance reduction, affine weight and bias, tail masking, and correct epsilon placement.",
+  "tags": ["triton", "layernorm", "rmsnorm", "normalization", "reduction"],
+  "difficulty": "intermediate",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.write-triton-kernel"],
+  "version": "0.1.0",
+  "entry": "skills/triton/write-triton-layernorm-kernel/SKILL.md"
+}

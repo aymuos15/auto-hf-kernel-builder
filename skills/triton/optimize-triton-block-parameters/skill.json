@@ -1,0 +1,13 @@
+{
+  "id": "triton.optimize-triton-block-parameters",
+  "name": "Optimize Triton Block Parameters",
+  "category": "triton",
+  "summary": "Tune a correct Triton kernel toward beating torch.compile by searching BLOCK_SIZE, num_warps, num_stages and applying triton.autotune without breaking correctness or block-power-of-2 invariants.",
+  "tags": ["triton", "autotune", "block-size", "num-warps", "num-stages", "performance"],
+  "difficulty": "intermediate",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.write-triton-kernel"],
+  "version": "0.1.0",
+  "entry": "skills/triton/optimize-triton-block-parameters/SKILL.md"
+}

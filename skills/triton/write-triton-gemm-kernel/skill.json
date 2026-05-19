@@ -1,0 +1,13 @@
+{
+  "id": "triton.write-triton-gemm-kernel",
+  "name": "Write Triton GEMM Kernel",
+  "category": "triton",
+  "summary": "Implement a tiled matrix-multiply in Triton with block M/N/K decomposition, fp32 accumulation, K-loop, masking for non-multiple shapes, and optional epilogue fusion.",
+  "tags": ["triton", "gemm", "matmul", "tiling", "fp32-accumulation"],
+  "difficulty": "advanced",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.write-triton-kernel"],
+  "version": "0.1.0",
+  "entry": "skills/triton/write-triton-gemm-kernel/SKILL.md"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "triton.write-triton-attention-kernel",
+  "name": "Write Triton Attention Kernel",
+  "category": "triton",
+  "summary": "Implement fused scaled-dot-product attention in Triton using the FlashAttention online-softmax tiling so the N-by-N score matrix is never materialized, with causal/additive masking and fp32 accumulation.",
+  "tags": ["triton", "attention", "flash-attention", "online-softmax", "causal-mask"],
+  "difficulty": "advanced",
+  "hardware": ["nvidia", "amd"],
+  "languages": ["python", "triton"],
+  "requires": ["triton.write-triton-kernel", "triton.write-triton-softmax-kernel"],
+  "version": "0.1.0",
+  "entry": "skills/triton/write-triton-attention-kernel/SKILL.md"
+}

@@ -1,0 +1,5 @@
+# Files for the hf-model-to-kernelbench skill
+SKILL.md
+references/contract.md
+references/vram-fit.md
+scripts/preflight.py
