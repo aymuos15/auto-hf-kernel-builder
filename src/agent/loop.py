@@ -23,25 +23,28 @@ def _git_clean_tree() -> bool:
     return r.returncode == 0 and not r.stdout.strip()
 
 
+_SKIP = shutil.ignore_patterns("kernel", "__pycache__")
+
+
 def _snapshot(cfg_dir: Path) -> Path:
     tmp = Path(tempfile.mkdtemp(prefix="kbsolve_"))
-    shutil.copytree(cfg_dir, tmp / "snap")
+    # skip kernel/ (build output incl. a read-only nix-store symlink) and
+    # kernel.py (the agent owns it)
+    shutil.copytree(cfg_dir, tmp / "snap", symlinks=True, ignore=_SKIP)
     return tmp / "snap"
 
 
 def _restore(cfg_dir: Path, snap: Path) -> None:
-    # revert any agent edit to tracked engine files / untracked junk
     subprocess.run(["git", "checkout", "--", "."], cwd=REPO, check=False)
     subprocess.run(["git", "clean", "-fdq"], cwd=REPO, check=False)
-    # restore the config folder except the agent's kernel.py
-    for p in list(cfg_dir.rglob("*")):
+    # restore top-level config files from the snapshot; never touch
+    # kernel/ (bench rebuilds it) or kernel.py (the agent's)
+    for p in cfg_dir.iterdir():
         if p.is_file() and p.name != "kernel.py":
             p.unlink()
-    for s in snap.rglob("*"):
+    for s in snap.iterdir():
         if s.is_file() and s.name != "kernel.py":
-            d = cfg_dir / s.relative_to(snap)
-            d.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(s, d)
+            shutil.copy2(s, cfg_dir / s.name)
 
 
 def _prompt(name: str, bench_json: Path) -> str:
