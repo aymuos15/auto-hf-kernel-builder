@@ -1,8 +1,9 @@
-"""agentic-kernels CLI. The agent uses only two verbs: build and run.
+"""agentic-kernels CLI. The agent uses only two verbs: build and bench.
 
-python3 src/cli.py build  --config configs/<name>/config.json
-python3 src/cli.py run    --config configs/<name>/config.json
-python3 src/cli.py config --level 3 --problem 4        # human prep
+python3 src/cli.py config --level 3 --problem 4              # human, once
+python3 src/cli.py setup  --config configs/<name>/config.json  # once: freeze the bar
+python3 src/cli.py build  --config configs/<name>/config.json  # agent
+python3 src/cli.py bench  --config configs/<name>/config.json  # agent
 """
 
 import json
@@ -29,11 +30,21 @@ def build(config: Path = _CONFIG) -> None:
 
 
 @app.command()
-def run(config: Path = _CONFIG) -> None:
-    """Full pipeline: benchmark + profile + build."""
-    from run import run as run_pipeline
+def bench(config: Path = _CONFIG) -> None:
+    """Phase: evaluate the built kernel — correctness + perf vs the bar."""
+    from bench import run_from_config
 
-    run_pipeline(str(config))
+    out = run_from_config(str(config))
+    passed = json.loads(out.read_text()).get("passed", False)
+    raise typer.Exit(0 if passed else 1)
+
+
+@app.command()
+def setup(config: Path = _CONFIG) -> None:
+    """One-time prep: benchmark baseline + profile (freezes the bar)."""
+    from setup import setup as setup_pipeline
+
+    setup_pipeline(str(config))
 
 
 @app.command()

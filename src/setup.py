@@ -1,11 +1,10 @@
-"""Pipeline runner. The ONLY input is a config.json (made by
-src/env/create.py, human-reviewed). Every stage reads only that config;
-outputs land in the same folder. Stages: Benchmark (3), Profile (4),
-Build (6, kernel-builder; needs configs/<name>/kernel.py and nix).
-Rich UI: a header panel, one progress bar per phase, and a results
-table; verbose output goes to run.log.
+"""Setup: one-time task prep. Benchmark the baseline (the frozen bar)
+and profile the Inductor codegen. Run once per config, before the agent
+loop. The agent never calls this — it only uses build + bench.
+Rich UI: header panel, one bar per phase, results table; verbose output
+to run.log.
 
-  python3 src/run.py --config configs/L3_4_LeNet5/config.json
+  python3 src/cli.py setup --config configs/L3_4_LeNet5/config.json
 """
 
 import argparse
@@ -44,13 +43,11 @@ from rich.progress import Progress as RichProgress  # noqa: E402
 from rich.table import Table  # noqa: E402
 
 from benchmark.baseline import run_from_config as benchmark  # noqa: E402
-from kernels.builder import run_from_config as build  # noqa: E402
 from profiling.inductor import run_from_config as profile  # noqa: E402
 
 STAGES = [
     ("Phase 3 · Benchmark", benchmark),
     ("Phase 4 · Profile", profile),
-    ("Phase 6 · Build", build),
 ]
 
 
@@ -91,7 +88,7 @@ def _summary(console: Console, cfg_path: Path) -> None:
     console.print(table)
 
 
-def run(config_path: str) -> None:
+def setup(config_path: str) -> None:
     console = Console()
     cfg_path = Path(config_path)
     if not cfg_path.is_file():
@@ -144,4 +141,4 @@ def run(config_path: str) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True, help="path to a config.json")
-    run(ap.parse_args().config)
+    setup(ap.parse_args().config)
