@@ -57,9 +57,9 @@ def run_from_config(config_path: str) -> Path:
         return fail("no_baseline", detail="run setup first (no res.json)")
     compile_ms = json.loads(res.read_text())["baseline"]["compile"]["time_ms"]
 
-    refp = cfg_path.with_name("ref.pt")
+    refp = cfg_path.parent.parent / ".ak" / cfg_path.parent.name / "ref.pt"
     if not refp.is_file():
-        return fail("no_baseline", detail="run setup first (no ref.pt)")
+        return fail("no_baseline", detail=f"run setup first (no {refp})")
     frozen = torch.load(refp, map_location="cpu", weights_only=False)
 
     try:

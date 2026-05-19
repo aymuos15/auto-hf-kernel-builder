@@ -78,7 +78,7 @@ def _summary(console: Console, cfg_path: Path) -> None:
         p = json.loads(prof.read_text())
         table.add_row("inductor code", p["inductor_code"])
         table.add_row("triton kernels", str(p["num_triton_kernels"]))
-    refp = cfg_path.with_name("ref.pt")
+    refp = cfg_path.parent.parent / ".ak" / cfg_path.parent.name / "ref.pt"
     if refp.is_file():
         import torch as _t
 

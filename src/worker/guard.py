@@ -45,7 +45,8 @@ def install_from_ref(config_path: str) -> None:
     the task source was available) and block those modules. No torch
     import needed — ref.pt's pickle header is read as plain bytes via
     torch only if present; fall back to no-op if missing."""
-    refp = Path(config_path).resolve().with_name("ref.pt")
+    cfg = Path(config_path).resolve()
+    refp = cfg.parent.parent / ".ak" / cfg.parent.name / "ref.pt"
     if not refp.is_file():
         return
     import torch  # local: only needed to read the tensor archive

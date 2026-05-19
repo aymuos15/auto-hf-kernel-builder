@@ -128,7 +128,8 @@ def freeze_reference(config_path: str) -> Path:
     def _freeze(xs):
         return [x.detach().cpu() if torch.is_tensor(x) else x for x in xs]
 
-    out = cfg_path.with_name("ref.pt")
+    out = cfg_path.parent.parent / ".ak" / cfg_path.parent.name / "ref.pt"
+    out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
             "inputs_a": _freeze(inputs_a),
