@@ -1,3 +1,11 @@
+This repo uses opencode headless to write Triton kernels that beat `torch.compile` and ensure kernel-builder compatibility. 
+
+The agent is pointed at a config (see example). 
+
+The base code must be in a KernelBench-style format.
+
+### Cli
+
 ```
 python3 src/cli.py config --level 3 --problem 4              # human prep: create configs/<name>/config.json
 python3 src/cli.py setup  --config configs/<name>/config.json  # once: benchmark baseline + profile (freezes the bar)
