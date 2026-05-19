@@ -2,8 +2,8 @@
 
 Each config gets its own folder. config.json holds task identity (the
 task lives in the config) + detected environment + default thresholds.
-Every later phase reads only config.json and writes its artifacts into
-the same folder (res.json, prof.json, inductor.py, run.log, kernel.py).
+Also writes reference.py (the verbatim KernelBench Model code) so the
+agent can study the exact computation it must reproduce.
 """
 
 import json
@@ -28,6 +28,8 @@ DEFAULTS = {
         "nix_attr": ".#bundle",
         "universal": True,
     },
+    "loop": {"max_retries": 5},
+    "agent": {"model": "github-copilot/gemini-3-flash-preview"},
 }
 
 
@@ -48,7 +50,8 @@ def create_config(
         **DEFAULTS,
     }
     cfg_path.write_text(json.dumps(config, indent=2))
-    print(f"wrote {cfg_path}")
+    (cfg_dir / "reference.py").write_text(task.code)
+    print(f"wrote {cfg_path} (+ reference.py)")
     return cfg_path
 
 

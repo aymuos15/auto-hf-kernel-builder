@@ -6,6 +6,7 @@ configs/*/inductor.py
 configs/*/run.log
 configs/*/build.json
 configs/*/bench.json
+configs/*/reference.py
 configs/*/kernel.py
 configs/*/kernel/
 data/

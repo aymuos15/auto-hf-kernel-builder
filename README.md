@@ -7,13 +7,14 @@ The base code must be in a KernelBench-style format.
 ### Cli
 
 ```
-python3 src/cli.py config --level 3 --problem 4              # human prep: create configs/<name>/config.json
-python3 src/cli.py setup  --config configs/<name>/config.json  # once: benchmark baseline + profile (freezes the bar)
-python3 src/cli.py build  --config configs/<name>/config.json  # agent: kernel-builder build only
-python3 src/cli.py bench  --config configs/<name>/config.json  # agent: correctness + perf vs the frozen bar
+python3 src/cli.py config --level 3 --problem 4              # human, once: config.json + reference.py
+python3 src/cli.py setup  --config configs/<name>/config.json  # human, once: benchmark baseline + profile (freezes the bar)
+python3 src/cli.py solve  --config configs/<name>/config.json  # human: start the agent loop (opencode → bench, repeat)
+python3 src/cli.py bench  --config configs/<name>/config.json  # the loop calls this; or by hand to debug a kernel
+python3 src/cli.py build  --config configs/<name>/config.json  # standalone: kernel-builder build only (debug)
 ```
 
-Flow: `config → setup → (agent edits kernel.py → bench)*`. The agent's only verb is `bench`: it checks correctness + perf by running `kernel.py` directly, and only on a correct+fast kernel does it build with kernel-builder to confirm compatibility. `build` stays a standalone verb for setup/debug.
+Flow: `config → setup → solve`. `solve` is the code-owned loop: each turn it runs opencode (which can only edit `kernel.py` — `opencode.json` denies bash), reverts any other edit, then the loop runs `bench` (correctness on two input sets + determinism + a real Triton launch + perf vs the frozen bar; builds with kernel-builder only once correct+fast) and feeds the verdict back. The agent never runs anything.
 
 ```
 --config   path to a config.json (setup, build, bench)

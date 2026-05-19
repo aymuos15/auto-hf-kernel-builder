@@ -41,16 +41,31 @@ class Baseline:
         return self.eager.time_ms / self.compile.time_ms
 
 
+def _exec(task: Task):
+    mod = types.ModuleType("kb_task")
+    exec(compile(task.code, task.name, "exec"), mod.__dict__)
+    return mod
+
+
 def _build(task: Task, device: str):
     torch.manual_seed(SEED)
     if device == "cuda":
         torch.cuda.manual_seed_all(SEED)
-    mod = types.ModuleType("kb_task")
-    exec(compile(task.code, task.name, "exec"), mod.__dict__)
+    mod = _exec(task)
     init = [x.to(device) if torch.is_tensor(x) else x for x in mod.get_init_inputs()]
     model = mod.Model(*init).to(device).eval()
     inputs = [x.to(device) if torch.is_tensor(x) else x for x in mod.get_inputs()]
     return model, inputs
+
+
+def make_inputs(task: Task, device: str, seed: int):
+    """Inputs for a given seed (same shapes as get_inputs, different
+    values) — used to defeat input-memoization in bench."""
+    torch.manual_seed(seed)
+    if device == "cuda":
+        torch.cuda.manual_seed_all(seed)
+    mod = _exec(task)
+    return [x.to(device) if torch.is_tensor(x) else x for x in mod.get_inputs()]
 
 
 def _measure(fn, inputs, warmup: int, iters: int) -> Measure:
