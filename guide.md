@@ -2,6 +2,24 @@
 
 Autonomous Triton kernel generation for KernelBench tasks. Built phase by phase.
 
+```
+Task → Env → Benchmark → Profile → Kernel (AI) → Build → Bench
+```
+
+`config → setup` is one-time prep (Task, Env, Benchmark, Profile). The agent loop is `Kernel (AI) → Build → Bench`, repeating until Bench passes.
+
+| step | code | creates |
+|---|---|---|
+| Task | `src/task/load.py` | — (reads `data/level_*.parquet`) |
+| Env | `src/env/extract.py`, `src/env/create.py` | `configs/<name>/config.json` |
+| Benchmark | `src/benchmark/baseline.py` | `res.json` |
+| Profile | `src/profiling/inductor.py` | `prof.json`, `inductor.py` |
+| Kernel (AI) | — (agent edits) | `configs/<name>/kernel.py` |
+| Build | `src/kernels/builder.py` (`scaffold`, `assemble.sh`, `build.sh`, `flake.nix`) | `build.json`, `kernel/` |
+| Bench | `src/bench.py` | `bench.json` |
+
+Orchestrated by `src/cli.py` (`config` · `setup` · `build` · `bench`); `setup.py` runs Benchmark+Profile.
+
 # Phase 1: Creating a task
 
 A task is one KernelBench problem, identified by `(level, problem_id)`.
@@ -41,15 +59,16 @@ Establish the bar a kernel must beat: GPU time + peak memory for eager vs `torch
 
 Config-driven — the only input is `configs/<name>/config.json`. `src/benchmark/baseline.py` reads the task identity + `benchmark` knobs (`warmup`, `iters`, `compile_mode`), seeds before building (reproducible), times with CUDA events (median), tracks `torch.cuda.max_memory_allocated`, and writes `configs/<name>/res.json` in the same folder.
 
-Orchestration via the CLI (`src/cli.py`, Typer). The agent uses only two verbs: `build` (Phase 6 only) and `run` (full pipeline). `config` is human prep.
+Orchestration via the CLI (`src/cli.py`, Typer). Flow: `config → setup → (agent edits kernel.py → build → bench)*`. The agent's surface is exactly two verbs: `build` and `bench`. `config` + `setup` are one-time, pre-agent.
 
 ```
-python3 src/cli.py config --level 3 --problem 4              # human: make config.json (review knobs)
+python3 src/cli.py config --level 3 --problem 4              # human, once: config.json (review knobs)
+python3 src/cli.py setup  --config configs/<name>/config.json  # once: benchmark baseline + profile (freezes the bar)
 python3 src/cli.py build  --config configs/<name>/config.json  # agent: kernel-builder build only
-python3 src/cli.py run    --config configs/<name>/config.json  # agent: benchmark + profile + build
+python3 src/cli.py bench  --config configs/<name>/config.json  # agent: correctness + perf vs the frozen bar
 ```
 
-`run` shows just the header panel, one progress bar per phase, and the final results table — all verbose output (stage prints, torch chatter, failure tracebacks) goes to `configs/<name>/run.log`, sectioned per phase. On failure: a one-line console pointer to the log, exit 1. `build` exits 0 if `build.json` passed else 1.
+`setup` shows the header panel, one bar per phase, and the results table; verbose output → `configs/<name>/run.log`; on failure a one-line pointer + exit 1. `build` exits 0 if `build.json` passed else 1. `bench` exits 0 only if the kernel is correct **and** beats the frozen `res.json` compile time (else 1, with `error_class` in `bench.json`).
 
 Reports, for each of eager and `torch.compile`:
 
@@ -105,4 +124,21 @@ Speed: pinned rev + HF Cachix substituter (download, don't compile) + reused `fl
 | `pkg` | kernel-builder package name |
 | `kernel_sha` | sha256 of `kernel.py` (drives the skip) |
 
-`configs/<name>/config.json` is the only tracked input; `kernel.py`, `res.json`, `prof.json`, `inductor.py`, `run.log`, `build.json`, and `kernel/` are derived (gitignored).
+# Phase 7: Bench
+
+The agent's verdict. `src/bench.py` evaluates the **built** kernel against the seeded reference (regenerated from `config.task` + `SEED` via `benchmark._build` — nothing frozen to disk):
+
+- **correctness**: `kernel(*inputs)` vs `Model(*inputs)` within `config.correctness` rtol/atol.
+- **perf**: median kernel time vs the **frozen** `res.json` compile time (the bar is never re-measured); pass iff correct **and** speedup ≥ `config.perf.min_speedup_vs_compile`.
+- writes `configs/<name>/bench.json`; exit 0 = pass, else 1.
+
+| `bench.json` field | meaning |
+|---|---|
+| `passed` | correct AND ≥ bar |
+| `error_class` | `no_baseline` / `not_built` / `kernel_exception` / `numeric_mismatch` / `slower_than_compile` / `null` |
+| `max_abs_diff` | correctness gap |
+| `speedup_vs_compile` | `compile_ms / kernel_ms` |
+
+Requires a prior `setup` (for `res.json`) and `build` (for the artifact).
+
+`configs/<name>/config.json` is the only tracked input; `kernel.py`, `res.json`, `prof.json`, `inductor.py`, `run.log`, `build.json`, `bench.json`, and `kernel/` are derived (gitignored).
