@@ -17,10 +17,17 @@ from task.load import load_task  # noqa: E402
 
 CONFIGS = Path(__file__).resolve().parents[2] / "configs"
 
+_KB_REV = "b4accba4496b28faef19a0487fbcf9686b14e2ef"
+
 DEFAULTS = {
     "benchmark": {"warmup": 10, "iters": 50, "compile_mode": "max-autotune"},
     "correctness": {"rtol": 2e-2, "atol": 2e-2},
     "perf": {"min_speedup_vs_compile": 1.05},
+    "build": {
+        "kernel_builder": f"github:huggingface/kernel-builder/{_KB_REV}",
+        "nix_attr": ".#bundle",
+        "universal": True,
+    },
 }
 
 

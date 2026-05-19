@@ -1,7 +1,9 @@
 """Pipeline runner. The ONLY input is a config.json (made by
 src/env/create.py, human-reviewed). Every stage reads only that config;
-outputs land in the same folder. Rich UI: a header panel, one progress
-bar per phase, and a results table; verbose output goes to run.log.
+outputs land in the same folder. Stages: Benchmark (3), Profile (4),
+Build (6, kernel-builder; needs configs/<name>/kernel.py and nix).
+Rich UI: a header panel, one progress bar per phase, and a results
+table; verbose output goes to run.log.
 
   python3 src/run.py --config configs/L3_4_LeNet5/config.json
 """
@@ -42,11 +44,13 @@ from rich.progress import Progress as RichProgress  # noqa: E402
 from rich.table import Table  # noqa: E402
 
 from benchmark.baseline import run_from_config as benchmark  # noqa: E402
+from kernels.builder import run_from_config as build  # noqa: E402
 from profiling.inductor import run_from_config as profile  # noqa: E402
 
 STAGES = [
     ("Phase 3 · Benchmark", benchmark),
     ("Phase 4 · Profile", profile),
+    ("Phase 6 · Build", build),
 ]
 
 
@@ -75,6 +79,15 @@ def _summary(console: Console, cfg_path: Path) -> None:
         p = json.loads(prof.read_text())
         table.add_row("inductor code", p["inductor_code"])
         table.add_row("triton kernels", str(p["num_triton_kernels"]))
+    bld = cfg_path.with_name("build.json")
+    if bld.is_file():
+        d = json.loads(bld.read_text())
+        table.add_row(
+            "kernel-builder",
+            f"[green]PASS[/green] ({d['pkg']})"
+            if d["passed"]
+            else f"[red]FAIL[/red] ({d['error_class']})",
+        )
     console.print(table)
 
 

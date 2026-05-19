@@ -4,7 +4,9 @@ configs/*/res.json
 configs/*/prof.json
 configs/*/inductor.py
 configs/*/run.log
+configs/*/build.json
 configs/*/kernel.py
+configs/*/kernel/
 data/
 __pycache__/
 *.pyc
