@@ -1,14 +1,7 @@
-# configs/<name>/config.json is the input (human-reviewed knobs).
-# Everything else in the folder is derived per run — regenerable.
-configs/*/res.json
-configs/*/prof.json
-configs/*/inductor.py
-configs/*/run.log
-configs/*/build.json
-configs/*/bench.json
-configs/*/reference.py
-configs/*/kernel.py
-configs/*/kernel/
+# configs/ is per-machine, regenerable (config.json from parquet+env;
+# everything else derived). Never committed; the solve loop snapshots
+# and restores it. Fully ignored so git status/clean stay correct.
+configs/
 data/
 __pycache__/
 *.pyc
