@@ -1,4 +1,4 @@
-This repo uses opencode headless to write Triton kernels that beat `torch.compile` and build with kernel-builder. The agent is pointed at a config; the base code must be in a KernelBench-style format.
+This repo uses opencode headless to write Triton kernels that beat `torch.compile` and build with [kernel-builder](https://github.com/huggingface/kernels/tree/main/kernel-builder). The agent is pointed at a config; the base code must be in a KernelBench-style format.
 
 Install opencode and get a free key from https://opencode.ai/zen :
 

@@ -148,7 +148,7 @@ Requires a prior `setup` (for `res.json`). No prior `build` needed — `bench` r
 
 ## The build-to-confirm gate
 
-Hard requirement (maintainer): a passing kernel must compile and build with HF **kernel-builder**. `src/kernels/builder.py` runs this as step 3 of `bench` (or standalone via the `build` verb):
+Hard requirement (maintainer): a passing kernel must compile and build with HF **[kernel-builder](https://github.com/huggingface/kernels/tree/main/kernel-builder)**. `src/kernels/builder.py` runs this as step 3 of `bench` (or standalone via the `build` verb):
 
 - `assemble.sh` turns `kernel.py` into a kernel-builder universal-Triton project: `configs/<name>/kernel/{build.toml, flake.nix, torch-ext/<pkg>/__init__.py}`. `flake.nix` (template `src/kernels/flake.nix`) pins kernel-builder to `b4accba…` (proven, cache-backed).
 - `build.sh` runs `nix build --accept-flake-config path:<proj>#bundle -o result` (`path:` so the gitignored project is visible to Nix), retried up to `config.build.nix_retries` (default 3) — the kernel-builder bundle build is occasionally a transient "1 dependency failed", and a correct kernel builds on retry.

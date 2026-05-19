@@ -30,7 +30,7 @@ python3 src/cli.py <cmd> --help    # options for one command
 
 `solve` is the code-owned loop. Each turn it runs opencode (which can only edit `kernel.py` — `opencode.json` denies bash), reverts any other edit (integrity restore), then **the loop** runs `bench` and feeds the verdict into the next turn. It refuses to start on a dirty git tree, and stops on pass or `config.loop.max_retries` (keeping the best kernel).
 
-`bench`: correctness on two seeded input sets + determinism, a real `@triton.jit` launch required, perf vs the frozen `res.json` compile time; only once correct **and** fast does it build with kernel-builder (retried on transient nix failure). Exit 0 only if it passes all of those.
+`bench`: correctness on two seeded input sets + determinism, a real `@triton.jit` launch required, perf vs the frozen `res.json` compile time; only once correct **and** fast does it build with [kernel-builder](https://github.com/huggingface/kernels/tree/main/kernel-builder) (retried on transient nix failure). Exit 0 only if it passes all of those.
 
 ## Per-config artifacts (`configs/<name>/`, all gitignored)
 
