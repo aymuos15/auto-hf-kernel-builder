@@ -13,7 +13,7 @@ python3 src/cli.py build  --config configs/<name>/config.json  # agent: kernel-b
 python3 src/cli.py bench  --config configs/<name>/config.json  # agent: correctness + perf vs the frozen bar
 ```
 
-Flow: `config → setup → (agent edits kernel.py → build → bench)*`. Agent surface = `build` + `bench`.
+Flow: `config → setup → (agent edits kernel.py → bench)*`. The agent's only verb is `bench`: it checks correctness + perf by running `kernel.py` directly, and only on a correct+fast kernel does it build with kernel-builder to confirm compatibility. `build` stays a standalone verb for setup/debug.
 
 ```
 --config   path to a config.json (setup, build, bench)
