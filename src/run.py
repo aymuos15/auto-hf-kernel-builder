@@ -91,13 +91,9 @@ def _summary(console: Console, cfg_path: Path) -> None:
     console.print(table)
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--config", required=True, help="path to a config.json")
-    args = ap.parse_args()
-
+def run(config_path: str) -> None:
     console = Console()
-    cfg_path = Path(args.config)
+    cfg_path = Path(config_path)
     if not cfg_path.is_file():
         console.print(f"[red]config not found:[/red] {cfg_path}")
         raise SystemExit(2)
@@ -146,4 +142,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--config", required=True, help="path to a config.json")
+    run(ap.parse_args().config)
