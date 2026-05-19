@@ -20,6 +20,8 @@ Each turn: edit `configs/<name>/kernel.py`, then stop. The harness benches it an
 - `numeric_mismatch` → output differs from the reference; fix the math (see `max_abs_diff`).
 - `nondeterministic` → same input gave different output; remove the nondeterminism.
 - `no_triton` → no `@triton.jit` kernel actually launched; you must do the real work in Triton, not torch.
+- `triton_figleaf` → a `@triton.jit` launched, but only on a tiny throwaway tensor — not output-scale data. The real computation must flow through Triton on the actual tensors, not a no-op launch beside a torch passthrough.
+- `precision_cheat` → the kernel ran the work under CUDA bf16/fp16 autocast while the baseline is fp32. Compute in the reference's dtype; do not downcast precision to "win".
 - `slower_than_compile` → correct but too slow; optimize (see `speedup_vs_compile` vs `min_speedup`).
 - `nix_build_failed` → correct *and* fast, but it doesn't build with kernel-builder; fix the Triton/packaging (keep it correct and fast).
 - `passed: true` → done.
@@ -33,6 +35,16 @@ Each turn: edit `configs/<name>/kernel.py`, then stop. The harness benches it an
 - `configs/<name>/inductor.py` + `prof.json` — what `torch.compile` fused/generated. This **is** the bar; mine it for fusion/tiling/block-size ideas — to beat it you must out-fuse or out-tune it.
 - `configs/<name>/res.json` — the frozen compile time you must beat.
 - `configs/<name>/kernel.py` — the only file you edit; `kernel(*inputs)` is the entry point.
+
+## Skills (read-only — read the one that matches before editing)
+
+`skills/INDEX.md` is a selector. Before each turn, read the **one** skill that matches your situation and follow its reasoning process and design rules:
+
+- writing the kernel the first time, or after `kernel_exception` / `no_triton` / `triton_figleaf` / `precision_cheat` → `skills/triton/write-triton-kernel/SKILL.md` (or the op-specific skill if the reference is clearly softmax / matmul-linear / layernorm-rmsnorm / attention — see `skills/INDEX.md`).
+- `numeric_mismatch` / `nondeterministic` → `skills/triton/debug-triton-correctness/SKILL.md`.
+- `slower_than_compile` → `skills/triton/optimize-triton-block-parameters/SKILL.md`.
+
+These are guidance, not files to edit. Reading them is allowed and expected; you still edit only `kernel.py`.
 
 ## Rules (hard)
 
