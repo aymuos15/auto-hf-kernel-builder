@@ -1,8 +1,0 @@
-# Local engine deps. torch+triton provide the GPU runtime; the rest is
-# the deterministic prepare/benchmark spine.
-torch>=2.4
-triton>=3.0
-pandas>=2.0
-pyarrow>=15.0
-pyyaml>=6.0
-huggingface_hub>=0.23
