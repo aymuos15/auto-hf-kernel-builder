@@ -13,6 +13,7 @@ re-measured here.
 Config-driven: input is configs/<name>/config.json. Writes bench.json.
 """
 
+import ast
 import contextlib
 import importlib.util
 import json
@@ -27,6 +28,33 @@ from benchmark.baseline import SEED, _build, _measure, make_inputs  # noqa: E402
 from kernels.builder import run_from_config as build_kernel  # noqa: E402
 from kernels.scaffold import scaffold  # noqa: E402
 from task.load import load_task  # noqa: E402
+
+_KERNEL_ALLOWED_IMPORTS = frozenset(
+    {
+        "torch",
+        "triton",
+        "math",
+        "typing",
+        "__future__",
+        "dataclasses",
+        "functools",
+        "itertools",
+        "operator",
+        "collections",
+    }
+)
+
+
+def _top_imports(src: str) -> set[str]:
+    """Top-level module names imported anywhere in src (incl. inside
+    functions — defeats a lazy import that dodges a build-time check)."""
+    mods: set[str] = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Import):
+            mods.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            mods.add(node.module.split(".")[0])
+    return mods
 
 
 def _load_kernel(kernel_py: Path):
@@ -114,6 +142,20 @@ def run_from_config(config_path: str) -> Path:
         return fail("no_kernel", detail=f"missing kernel.py in {cfg_path.parent}")
 
     task = load_task(t["level"], t["problem_id"])
+
+    ref_deps = _top_imports(task.code) - _KERNEL_ALLOWED_IMPORTS
+    try:
+        kern_imports = _top_imports(kernel_py.read_text())
+    except SyntaxError:
+        kern_imports = set()
+    leaked = sorted(ref_deps & kern_imports)
+    if leaked:
+        return fail(
+            "reference_import",
+            detail=f"kernel.py imports reference dependency {leaked}; reproduce the "
+            "computation in Triton — importing or running the reference model is a cheat",
+        )
+
     model, inputs_a = _build(task, "cuda")
     inputs_b = make_inputs(task, "cuda", SEED + 1)
     c = cfg["correctness"]
