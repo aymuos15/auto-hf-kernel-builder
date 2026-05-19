@@ -1,9 +1,11 @@
-# tasks/ is fully derived: core/prepare.py regenerates the frozen contract,
-# the loop regenerates kernel.py/result.json. The repo tracks the engine
-# only — per-task artifacts are local/regenerable, never history.
-tasks/
+# configs/<name>/config.json is the input (human-reviewed knobs).
+# Everything else in the folder is derived per run — regenerable.
+configs/*/res.json
+configs/*/prof.json
+configs/*/inductor.py
+configs/*/run.log
+configs/*/kernel.py
 data/
 __pycache__/
 *.pyc
 secrets.env
-HANDOFF.md
