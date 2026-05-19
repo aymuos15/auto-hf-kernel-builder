@@ -36,8 +36,6 @@ def create_config(
 ) -> Path:
     task = load_task(level, problem_id)
     name = name or f"L{level}_{task.name}"
-    # Each config gets its own folder; config.json is the input, all
-    # later artifacts (res/prof/inductor/run.log/kernel) land beside it.
     cfg_dir = CONFIGS / name
     cfg_path = cfg_dir / "config.json"
     if cfg_path.is_file() and not force:

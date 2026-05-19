@@ -42,8 +42,6 @@ class Baseline:
 
 
 def _build(task: Task, device: str):
-    """Seeded Model + inputs from the task code (KernelBench convention:
-    Model, get_inputs(), get_init_inputs())."""
     torch.manual_seed(SEED)
     if device == "cuda":
         torch.cuda.manual_seed_all(SEED)

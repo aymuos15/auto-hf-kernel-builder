@@ -23,12 +23,14 @@ import torch  # noqa: E402
 
 from benchmark.baseline import _build, _measure  # noqa: E402
 from kernels.builder import run_from_config as build_kernel  # noqa: E402
+from kernels.scaffold import scaffold  # noqa: E402
 from task.load import load_task  # noqa: E402
 
 
 def _load_kernel(kernel_py: Path):
     spec = importlib.util.spec_from_file_location("_kernel_src", kernel_py)
-    assert spec and spec.loader
+    if not spec or not spec.loader:
+        raise ImportError(f"cannot load spec for {kernel_py}")
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m.kernel
@@ -52,9 +54,10 @@ def run_from_config(config_path: str) -> Path:
         return fail("no_baseline", detail="run setup first (no res.json)")
     compile_ms = json.loads(res.read_text())["baseline"]["compile"]["time_ms"]
 
-    kernel_py = cfg_path.with_name("kernel.py")
-    if not kernel_py.is_file():
-        return fail("no_kernel", detail=f"missing {kernel_py}")
+    try:
+        kernel_py = scaffold(config_path)
+    except FileNotFoundError:
+        return fail("no_kernel", detail=f"missing kernel.py in {cfg_path.parent}")
 
     task = load_task(t["level"], t["problem_id"])
     model, inputs = _build(task, "cuda")
@@ -76,7 +79,7 @@ def run_from_config(config_path: str) -> Path:
 
     b = cfg["benchmark"]
     with torch.no_grad():
-        kernel_ms = _measure(lambda *a: kern(*a), inputs, b["warmup"], b["iters"]).time_ms
+        kernel_ms = _measure(kern, inputs, b["warmup"], b["iters"]).time_ms
     speedup = compile_ms / kernel_ms
     bar = float(cfg["perf"]["min_speedup_vs_compile"])
     rec.update(

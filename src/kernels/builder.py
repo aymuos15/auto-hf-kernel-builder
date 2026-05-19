@@ -14,6 +14,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import deque
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -87,10 +88,10 @@ def run_from_config(config_path: str) -> Path:
         bufsize=1,
     )
     assert proc.stdout is not None
-    lines = []
+    tail: deque[str] = deque(maxlen=200)
     for line in proc.stdout:
         print(line, end="", flush=True)
-        lines.append(line)
+        tail.append(line)
     rc = proc.wait()
 
     if rc == 0:
@@ -98,7 +99,7 @@ def run_from_config(config_path: str) -> Path:
         print(f"build: PASS ({pkg})")
     else:
         cls = _RC.get(rc, "build_error")
-        record.update(passed=False, error_class=cls, stderr_tail="".join(lines)[-2000:])
+        record.update(passed=False, error_class=cls, stderr_tail="".join(tail))
         print(f"build: FAIL ({cls})")
     out.write_text(json.dumps(record, indent=2))
     return out

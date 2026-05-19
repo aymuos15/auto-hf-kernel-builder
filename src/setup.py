@@ -99,8 +99,6 @@ def setup(config_path: str) -> None:
 
     _header(console, cfg, cfg_path)
 
-    # Console shows only the bars + final table; everything verbose
-    # (stage prints, torch chatter, tracebacks) goes to this log.
     log_path = cfg_path.with_name("run.log")
     progress = RichProgress(
         SpinnerColumn(),
@@ -114,13 +112,9 @@ def setup(config_path: str) -> None:
         log.flush()
         with progress:
             for name, fn in STAGES:
-                # Bar appears when the phase starts; total=None makes it
-                # pulse while running, so only the active phase animates.
                 tid = progress.add_task(name, total=None)
                 log.write(f"\n===== {name} =====\n")
                 log.flush()
-                # The one deliberate boundary: log the failure, point the
-                # user at the log, exit non-zero.
                 try:
                     with redirect_stdout(log), redirect_stderr(log):
                         fn(str(cfg_path))
