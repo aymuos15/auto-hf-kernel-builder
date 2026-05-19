@@ -1,7 +1,8 @@
 """solve: the code-owned agent loop (human entrypoint, never agent-reachable).
 
-Per iteration: run opencode for ONE edit turn (agent edits kernel.py
-only; bash denied by opencode.json) -> restore integrity (revert any
+Per iteration: run the agent (opencode, or `claude -p` headless when
+config.agent.model is a Claude id) for ONE edit turn (file-edit only;
+bash/webfetch/Task denied) -> restore integrity (revert any
 non-kernel.py edit) -> the LOOP runs bench -> read bench.json -> keep
 best / revert regression -> feed error_class into the next prompt.
 Stops on pass or config loop.max_retries.
@@ -47,6 +48,31 @@ def _restore(cfg_dir: Path, snap: Path) -> None:
     for s in snap.iterdir():
         if s.is_file() and s.name != "kernel.py":
             shutil.copy2(s, cfg_dir / s.name)
+
+
+def _agent_argv(model: str, prompt: str) -> list[str]:
+    """One edit turn. opencode by default; claude -p headless when the
+    model is a Claude alias/id (uses Anthropic auth, sidesteps the
+    opencode<->Copilot path). The --allowedTools whitelist mirrors
+    opencode.json's lock (no Bash/WebFetch/Task — file edits only); the
+    loop's integrity-restore + guarded bench are unchanged."""
+    if model in ("haiku", "sonnet", "opus") or model.startswith(("claude", "anthropic/")):
+        return [
+            "claude",
+            "-p",
+            prompt,
+            "--model",
+            model,
+            "--output-format",
+            "text",
+            "--allowedTools",
+            "Edit Read Write Glob Grep",
+            "--permission-mode",
+            "acceptEdits",
+            "--add-dir",
+            str(REPO),
+        ]
+    return ["opencode", "run", "--model", model, prompt]
 
 
 def _prompt(name: str, bench_json: Path) -> str:
@@ -134,7 +160,7 @@ def solve(config_path: str) -> None:
         print(f"\n=== solve {name}: attempt {attempt}/{max_retries} ===")
         prompt = _prompt(name, cfg_path.with_name("bench.json"))
         proc = subprocess.Popen(
-            ["opencode", "run", "--model", model, prompt],
+            _agent_argv(model, prompt),
             cwd=REPO,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
