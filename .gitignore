@@ -1,11 +1,9 @@
-# targets/ is fully derived output: `make prep` regenerates the frozen
-# contract, the loop regenerates the kernel. The repo tracks the generic
-# engine only — per-target results are local/regenerable, never history.
-targets/
+# tasks/ is fully derived: core/prepare.py regenerates the frozen contract,
+# the loop regenerates kernel.py/result.json. The repo tracks the engine
+# only — per-task artifacts are local/regenerable, never history.
+tasks/
+data/
 __pycache__/
 *.pyc
-# Secrets — NEVER tracked. HF_TOKEN etc. go here (synced to host, env-file'd
-# into the container by config.yaml: exec.docker_run_extra).
 secrets.env
-# Live session scratch state, not project history (canonical doc = AGENTS.md).
 HANDOFF.md
