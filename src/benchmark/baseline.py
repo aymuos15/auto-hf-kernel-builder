@@ -7,7 +7,6 @@ to results.json next to it (inputs vs outputs stay separate).
 Deterministic: seeds before constructing the Model / inputs.
 """
 
-import ast
 import json
 import statistics
 import sys
@@ -19,38 +18,8 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from benchmark.anticheat import _KERNEL_ALLOWED_IMPORTS, _top_imports  # noqa: E402
 from task.load import Task, load_task  # noqa: E402
-
-_KERNEL_ALLOWED_IMPORTS = frozenset(
-    {
-        "torch",
-        "triton",
-        "math",
-        "typing",
-        "__future__",
-        "dataclasses",
-        "functools",
-        "itertools",
-        "operator",
-        "collections",
-    }
-)
-
-
-def _top_imports(src: str) -> set[str]:
-    """Top-level module names imported anywhere in src (incl. inside
-    functions — defeats a lazy import that dodges a build-time check).
-    Note: a static scan; runtime imports (importlib/__import__) evade it,
-    so this is belt-and-suspenders, not the boundary (the boundary is
-    bench never building the reference — see freeze_reference)."""
-    mods: set[str] = set()
-    for node in ast.walk(ast.parse(src)):
-        if isinstance(node, ast.Import):
-            mods.update(a.name.split(".")[0] for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-            mods.add(node.module.split(".")[0])
-    return mods
-
 
 SEED = 0
 

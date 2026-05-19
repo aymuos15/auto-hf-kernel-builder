@@ -15,7 +15,6 @@ compile time in res.json (from setup); never re-measured here.
 Config-driven: input is configs/<name>/config.json. Writes bench.json.
 """
 
-import contextlib
 import importlib.util
 import json
 import sys
@@ -25,7 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import torch  # noqa: E402
 
-from benchmark.baseline import _measure, _top_imports  # noqa: E402
+from benchmark.anticheat import _autocast_tripwire, _top_imports, _triton_counter  # noqa: E402
+from benchmark.baseline import _measure  # noqa: E402
 from kernels.builder import run_from_config as build_kernel  # noqa: E402
 from kernels.scaffold import scaffold  # noqa: E402
 
@@ -37,58 +37,6 @@ def _load_kernel(kernel_py: Path):
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m.kernel
-
-
-@contextlib.contextmanager
-def _triton_counter():
-    """Count @triton.jit launches and the largest tensor any launch
-    touched. max_numel lets bench reject a no-op fig-leaf kernel (a
-    tiny launch on a throwaway tensor) used only to satisfy n>0 while
-    the real work is torch passthrough."""
-    from triton.runtime.jit import JITFunction
-
-    box = {"n": 0, "max_numel": 0}
-    orig = JITFunction.run
-
-    def run(self, *a, **k):
-        box["n"] += 1
-        for v in (*a, *k.values()):
-            if torch.is_tensor(v):
-                box["max_numel"] = max(box["max_numel"], v.numel())
-        return orig(self, *a, **k)
-
-    JITFunction.run = run
-    try:
-        yield box
-    finally:
-        JITFunction.run = orig
-
-
-@contextlib.contextmanager
-def _autocast_tripwire():
-    """Trip if the kernel runs under reduced-precision CUDA autocast.
-    The frozen baseline is measured in the reference's native dtype
-    (fp32); a kernel that wraps the reference model in bf16/fp16
-    autocast 'beats' it on precision, not on a real kernel — an
-    apples-to-oranges speedup. Caught here, not via output dtype (the
-    cheat upcasts the result back to fp32 on return)."""
-    box = {"tripped": False, "dtype": None}
-    orig = torch.autocast.__enter__
-
-    def enter(self):
-        if getattr(self, "device", None) == "cuda" and getattr(self, "fast_dtype", None) in (
-            torch.bfloat16,
-            torch.float16,
-        ):
-            box["tripped"] = True
-            box["dtype"] = str(self.fast_dtype)
-        return orig(self)
-
-    torch.autocast.__enter__ = enter
-    try:
-        yield box
-    finally:
-        torch.autocast.__enter__ = orig
 
 
 def run_from_config(config_path: str) -> Path:
