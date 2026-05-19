@@ -104,6 +104,44 @@ def measure_baseline(
     return Baseline(task=task.name, device=torch.cuda.get_device_name(0), eager=eager, compile=comp)
 
 
+def freeze_reference(config_path: str) -> Path:
+    """Freeze the seeded reference outputs to ref.pt so bench can verify
+    against frozen tensors instead of rebuilding (and importing) the
+    reference. This is the structural anti-cheat: the bench worker then
+    never needs the reference model or its deps at all.
+
+    Saves CPU tensors + metadata; deterministic from config.task + SEED
+    (same seeds bench used: ref_a at SEED, ref_b at SEED+1)."""
+    assert torch.cuda.is_available(), "CUDA required to build the reference"
+    cfg_path = Path(config_path).resolve()
+    cfg = json.loads(cfg_path.read_text())
+    t = cfg["task"]
+    task = load_task(t["level"], t["problem_id"])
+    model, inputs_a = _build(task, "cuda")
+    inputs_b = make_inputs(task, "cuda", SEED + 1)
+    with torch.no_grad():
+        ref_a, ref_b = model(*inputs_a), model(*inputs_b)
+    if not (torch.is_tensor(ref_a) and torch.is_tensor(ref_b)):
+        raise TypeError("reference forward must return a single tensor")
+    out = cfg_path.with_name("ref.pt")
+    torch.save(
+        {
+            "ref_a": ref_a.detach().cpu(),
+            "ref_b": ref_b.detach().cpu(),
+            "meta": {
+                "task": t,
+                "seed_a": SEED,
+                "seed_b": SEED + 1,
+                "shape": list(ref_a.shape),
+                "dtype": str(ref_a.dtype),
+            },
+        },
+        out,
+    )
+    print(f"wrote {out}  (ref_a/ref_b {tuple(ref_a.shape)} {ref_a.dtype})")
+    return out
+
+
 def run_from_config(config_path: str) -> Path:
     """Phase 3 entrypoint: read config.json, benchmark, write results.json
     in the same task dir."""

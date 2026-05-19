@@ -42,12 +42,14 @@ from rich.progress import (  # noqa: E402
 from rich.progress import Progress as RichProgress  # noqa: E402
 from rich.table import Table  # noqa: E402
 
+from benchmark.baseline import freeze_reference  # noqa: E402
 from benchmark.baseline import run_from_config as benchmark  # noqa: E402
 from profiling.inductor import run_from_config as profile  # noqa: E402
 
 STAGES = [
     ("Phase 3 · Benchmark", benchmark),
     ("Phase 4 · Profile", profile),
+    ("Phase 5 · Freeze reference", freeze_reference),
 ]
 
 
@@ -76,6 +78,12 @@ def _summary(console: Console, cfg_path: Path) -> None:
         p = json.loads(prof.read_text())
         table.add_row("inductor code", p["inductor_code"])
         table.add_row("triton kernels", str(p["num_triton_kernels"]))
+    refp = cfg_path.with_name("ref.pt")
+    if refp.is_file():
+        import torch as _t
+
+        m = _t.load(refp, map_location="cpu", weights_only=False)["meta"]
+        table.add_row("frozen reference", f"ref.pt {tuple(m['shape'])} {m['dtype']}")
     bld = cfg_path.with_name("build.json")
     if bld.is_file():
         d = json.loads(bld.read_text())
