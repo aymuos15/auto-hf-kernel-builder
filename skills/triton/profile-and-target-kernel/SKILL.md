@@ -50,3 +50,43 @@ You have **no shell**; these files ARE your profiler output:
 - One target, one hypothesis per turn — same discipline as the debug skill.
 - To beat `torch.compile` you must beat *its* dominant fused kernel; "a real Triton kernel" that doesn't address that region will still be `slower_than_compile`.
 - Do not confuse this with launch-param tuning — that is `optimize-triton-block-parameters`, applied *after* you have the right target and a correct kernel.
+
+---
+
+## Worked example (profile → bound → resulting kernel)
+
+Suppose `prof.json`/`inductor.py` show the dominant region is a `Linear` epilogue Inductor split into separate `addmm` + bias + `GELU` kernels over a `(N, D)` activation, and `res.json` shows compile ≈ memory-bound (eager/compile ≈ 1.1×, low arithmetic intensity).
+
+Reasoning: the matmul itself is cuBLAS-bound (don't rewrite it), but the **bias + GELU epilogue is memory-bound** and Inductor round-trips the `(N, D)` activation through global memory twice. Target = fuse bias+GELU into one pass over the activation; leave the matmul to torch. That out-fuses the specific dominant region without fighting cuBLAS.
+
+Resulting kernel (the thing the write skill then implements — runnable, fp32 accum, masked, output dtype preserved):
+
+```python
+import torch
+import triton
+import triton.language as tl
+
+
+@triton.jit
+def _bias_gelu(x_ptr, b_ptr, y_ptr, n, D, BLOCK: tl.constexpr):
+    pid = tl.program_id(0)
+    offs = pid * BLOCK + tl.arange(0, BLOCK)
+    mask = offs < n
+    x = tl.load(x_ptr + offs, mask=mask, other=0.0).to(tl.float32)
+    b = tl.load(b_ptr + (offs % D), mask=mask, other=0.0).to(tl.float32)
+    v = x + b
+    c = 0.7978845608028654  # sqrt(2/pi)
+    z = c * (v + 0.044715 * v * v * v)
+    t = 1.0 - 2.0 / (tl.exp(2.0 * z) + 1.0)  # tanh via exp (portable)
+    tl.store(y_ptr + offs, (0.5 * v * (1.0 + t)).to(x_ptr.dtype.element_ty), mask=mask)
+
+
+def fused_bias_gelu(x, bias):  # x: (N, D) post-matmul activation, bias: (D,)
+    x = x.contiguous()
+    y = torch.empty_like(x)
+    n, D = x.numel(), x.shape[-1]
+    _bias_gelu[(triton.cdiv(n, 1024),)](x, bias, y, n, D, BLOCK=1024)
+    return y
+```
+
+The skill's output is the *decision* (fuse the memory-bound bias+GELU epilogue, not the matmul); the kernel shows that decision realized so it can be verified end to end.
