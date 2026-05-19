@@ -25,7 +25,7 @@ The agent never runs anything; the loop owns iteration and bench.
 | 2 Env + Config | `src/env/extract.py`, `src/env/create.py` | `config.json`, `reference.py` |
 | 3 Benchmark | `src/benchmark/baseline.py` | `res.json` |
 | 4 Profile | `src/profiling/inductor.py` | `prof.json`, `inductor.py` |
-| 5 Solve | `src/agent/loop.py` + `prompt.md`; per turn: `src/kernels/scaffold.py` (kernel seam), `src/bench.py`, `src/kernels/builder.py` | `kernel.py`, `bench.json`, `trace/attempt_N.log` (+ `build.json`, `kernel/` on pass) |
+| 5 Solve | `src/agent/loop.py` + `prompt.md`; per turn: `src/kernels/scaffold.py` (kernel seam), `src/benchmark/bench.py`, `src/kernels/builder.py` | `kernel.py`, `bench.json`, `trace/attempt_N.log` (+ `build.json`, `kernel/` on pass) |
 
 Phases 1–4 are `config` (1–2) + `setup` (3–4). Phase 5 (Solve) is the agent loop; each iteration it writes `kernel.py` and benches it. All artifacts live in `configs/<name>/`.
 
@@ -126,7 +126,7 @@ The agent has no shell and never runs `bench` — the loop does, between turns. 
 
 ## Bench
 
-`src/bench.py` runs `kernel.py` **directly** (no nix) against the seeded reference, regenerated from `config.task` + `SEED` — weights fixed by `SEED`, inputs varied per seed; nothing frozen to disk:
+`src/benchmark/bench.py` runs `kernel.py` **directly** (no nix) against the seeded reference, regenerated from `config.task` + `SEED` — weights fixed by `SEED`, inputs varied per seed; nothing frozen to disk:
 
 1. **correctness** — `kernel(*inputs)` vs `Model(*inputs)` within `config.correctness` rtol/atol, on **two** input sets A and B (defeats memoization / constant-return), plus a determinism check (same input → same output).
 2. **triton-invoked** — at least one `@triton.jit` kernel must actually launch during a `kernel` call (defeats torch passthrough).

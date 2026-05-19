@@ -34,7 +34,7 @@ def build(config: Path = _CONFIG) -> None:
 @app.command()
 def bench(config: Path = _CONFIG) -> None:
     """Phase: evaluate the built kernel — correctness + perf vs the bar."""
-    from bench import run_from_config
+    from benchmark.bench import run_from_config
 
     out = run_from_config(str(config))
     passed = json.loads(out.read_text()).get("passed", False)
@@ -44,7 +44,7 @@ def bench(config: Path = _CONFIG) -> None:
 @app.command()
 def setup(config: Path = _CONFIG) -> None:
     """One-time prep: benchmark baseline + profile (freezes the bar)."""
-    from setup import setup as setup_pipeline
+    from env.setup import setup as setup_pipeline
 
     setup_pipeline(str(config))
 

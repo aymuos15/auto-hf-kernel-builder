@@ -18,7 +18,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # Quiet torch: it reconfigures Python logging on import (so pre-import
 # levels don't stick) and writes to the real stderr fd (so redirect can't
